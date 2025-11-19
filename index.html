@@ -409,6 +409,7 @@
                             <span id="zoomLevel">100%</span>
                             <button class="toolbar-btn" onclick="zoomIn()">+</button>
                         </div>
+                        <button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
                     </div>
                 </div>
                 <div class="pdf-viewer" id="pdfViewer">
@@ -694,6 +695,31 @@
             const sidebar = document.getElementById('sidebar');
             sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none';
         }
+
+        function toggleFullscreen() {
+            const container = document.querySelector('.container');
+            const btn = document.getElementById('fullscreenBtn');
+            
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().then(() => {
+                    btn.textContent = '⛶ Exit Fullscreen';
+                }).catch(err => {
+                    alert('Error attempting to enable fullscreen: ' + err.message);
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                    btn.textContent = '⛶ Fullscreen';
+                });
+            }
+        }
+
+        // Listen for fullscreen changes (in case user presses ESC)
+        document.addEventListener('fullscreenchange', () => {
+            const btn = document.getElementById('fullscreenBtn');
+            if (!document.fullscreenElement) {
+                btn.textContent = '⛶ Fullscreen';
+            }
+        });
 
         // Initialize
         renderLibrary();
