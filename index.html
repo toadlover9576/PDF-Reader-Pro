@@ -455,6 +455,11 @@
         let pdfDoc = null;
         let currentPdfId = null;
 
+        // Update zoom display on load
+        function updateZoomDisplay() {
+            document.getElementById('zoomLevel').textContent = Math.round(scale * 100 / 1.5 * 100) + '%';
+        }
+
         function renderLibrary() {
             const list = document.getElementById('libraryList');
             if (library.length === 0) {
@@ -492,15 +497,42 @@
                 return;
             }
 
+            // Show loading state
+            const addButton = event.target;
+            const originalText = addButton.textContent;
+            addButton.textContent = 'Loading...';
+            addButton.disabled = true;
+
             try {
-                // Use a CORS proxy to load the PDF
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-                const loadingTask = pdfjsLib.getDocument({
-                    url: proxyUrl,
-                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                    cMapPacked: true
-                });
-                const pdf = await loadingTask.promise;
+                // Try multiple CORS proxies for better reliability
+                const proxies = [
+                    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                    url // Try direct access as fallback
+                ];
+
+                let pdf = null;
+                let lastError = null;
+
+                for (const proxyUrl of proxies) {
+                    try {
+                        const loadingTask = pdfjsLib.getDocument({
+                            url: proxyUrl,
+                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                            cMapPacked: true
+                        });
+                        pdf = await loadingTask.promise;
+                        break; // Success! Exit the loop
+                    } catch (err) {
+                        lastError = err;
+                        console.warn(`Failed with proxy: ${proxyUrl}`, err);
+                        continue; // Try next proxy
+                    }
+                }
+
+                if (!pdf) {
+                    throw lastError || new Error('All loading methods failed');
+                }
                 
                 const pdfItem = {
                     id: Date.now(),
@@ -508,6 +540,7 @@
                     url: url,
                     currentPage: 1,
                     totalPages: pdf.numPages,
+                    scale: 1.5,
                     addedDate: new Date().toISOString()
                 };
                 
@@ -515,10 +548,13 @@
                 localStorage.setItem('pdfLibrary', JSON.stringify(library));
                 renderLibrary();
                 closeAddModal();
-                loadPdfFromLibrary(library.length - 1);
+                await loadPdfFromLibrary(library.length - 1);
             } catch (error) {
                 alert('Failed to load PDF. The URL might be invalid or the PDF might be protected. Error: ' + error.message);
                 console.error(error);
+            } finally {
+                addButton.textContent = originalText;
+                addButton.disabled = false;
             }
         }
 
@@ -543,27 +579,56 @@
             const item = library[index];
             currentPdfId = item.id;
             
+            // Show loading indicator
+            const viewer = document.getElementById('pdfViewer');
+            viewer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><h3>Loading PDF...</h3></div>';
+            
             try {
-                // Use CORS proxy for loading PDFs
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(item.url)}`;
-                const loadingTask = pdfjsLib.getDocument({
-                    url: proxyUrl,
-                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                    cMapPacked: true
-                });
-                pdfDoc = await loadingTask.promise;
+                // Try multiple loading methods for better reliability
+                const proxies = [
+                    `https://corsproxy.io/?${encodeURIComponent(item.url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`,
+                    item.url
+                ];
+
+                let pdf = null;
+                let lastError = null;
+
+                for (const proxyUrl of proxies) {
+                    try {
+                        const loadingTask = pdfjsLib.getDocument({
+                            url: proxyUrl,
+                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                            cMapPacked: true
+                        });
+                        pdf = await loadingTask.promise;
+                        break; // Success!
+                    } catch (err) {
+                        lastError = err;
+                        console.warn(`Failed to load with: ${proxyUrl}`, err);
+                        continue;
+                    }
+                }
+
+                if (!pdf) {
+                    throw lastError || new Error('Failed to load PDF from all sources');
+                }
+
+                pdfDoc = pdf;
                 totalPages = pdfDoc.numPages;
                 currentPage = item.currentPage;
+                scale = item.scale || 1.5;
                 
                 document.getElementById('totalPages').textContent = totalPages;
                 document.getElementById('pageInput').max = totalPages;
+                updateZoomDisplay();
                 
                 await renderPage(currentPage);
                 await loadTableOfContents();
                 renderLibrary();
                 updateProgress();
             } catch (error) {
-                alert('Failed to load PDF: ' + error.message);
+                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
                 console.error(error);
             }
         }
@@ -602,6 +667,7 @@
                 const index = library.findIndex(item => item.id === currentPdfId);
                 if (index !== -1) {
                     library[index].currentPage = currentPage;
+                    library[index].scale = scale;
                     localStorage.setItem('pdfLibrary', JSON.stringify(library));
                     renderLibrary();
                 }
@@ -666,15 +732,21 @@
 
         async function zoomIn() {
             scale += 0.25;
-            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
-            if (pdfDoc) await renderPage(currentPage);
+            updateZoomDisplay();
+            if (pdfDoc) {
+                await renderPage(currentPage);
+                updateProgress();
+            }
         }
 
         async function zoomOut() {
             if (scale > 0.5) {
                 scale -= 0.25;
-                document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
-                if (pdfDoc) await renderPage(currentPage);
+                updateZoomDisplay();
+                if (pdfDoc) {
+                    await renderPage(currentPage);
+                    updateProgress();
+                }
             }
         }
 
