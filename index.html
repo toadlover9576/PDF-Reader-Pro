@@ -457,7 +457,7 @@
 
         // Update zoom display on load
         function updateZoomDisplay() {
-            document.getElementById('zoomLevel').textContent = Math.round(scale * 100 / 1.5 * 100) + '%';
+            document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
         }
 
         function renderLibrary() {
