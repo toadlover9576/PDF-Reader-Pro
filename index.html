@@ -422,9 +422,12 @@
         </div>
     </div>
 
-    <div class="modal" id="addModal">
+    <div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
         <div class="modal-content">
-            <div class="modal-header">Add PDF Document</div>
+            <div class="modal-header">
+                Add PDF Document
+                <button style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;" onclick="closeAddModal()">×</button>
+            </div>
             <div class="form-group">
                 <label class="form-label">Document Name</label>
                 <input type="text" class="form-input" id="pdfName" placeholder="Enter document name">
@@ -489,7 +492,13 @@
             }
 
             try {
-                const loadingTask = pdfjsLib.getDocument(url);
+                // Use a CORS proxy to load the PDF
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                const loadingTask = pdfjsLib.getDocument({
+                    url: proxyUrl,
+                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true
+                });
                 const pdf = await loadingTask.promise;
                 
                 const pdfItem = {
@@ -507,7 +516,7 @@
                 closeAddModal();
                 loadPdfFromLibrary(library.length - 1);
             } catch (error) {
-                alert('Failed to load PDF. Please check the URL and try again.');
+                alert('Failed to load PDF. The URL might be invalid or the PDF might be protected. Error: ' + error.message);
                 console.error(error);
             }
         }
@@ -534,7 +543,13 @@
             currentPdfId = item.id;
             
             try {
-                const loadingTask = pdfjsLib.getDocument(item.url);
+                // Use CORS proxy for loading PDFs
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(item.url)}`;
+                const loadingTask = pdfjsLib.getDocument({
+                    url: proxyUrl,
+                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true
+                });
                 pdfDoc = await loadingTask.promise;
                 totalPages = pdfDoc.numPages;
                 currentPage = item.currentPage;
@@ -547,7 +562,7 @@
                 renderLibrary();
                 updateProgress();
             } catch (error) {
-                alert('Failed to load PDF');
+                alert('Failed to load PDF: ' + error.message);
                 console.error(error);
             }
         }
