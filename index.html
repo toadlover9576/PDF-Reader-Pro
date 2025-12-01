@@ -347,8 +347,195 @@
             margin-top: 5px;
         }
 
-        .delete-btn:hover {
+       .delete-btn:hover {
             background: #c82333;
+        }
+
+        .annotation-toolbar {
+            background: #3c4044;
+            padding: 10px 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-top: 1px solid #2c3034;
+        }
+
+        .annotation-btn {
+            background: #4c5054;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .annotation-btn:hover {
+            background: #5c6064;
+        }
+
+        .annotation-btn.active {
+            background: #667eea;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+
+        .color-option.active {
+            border-color: white;
+        }
+
+        .bookmark-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid #667eea;
+        }
+
+        .bookmark-item:hover {
+            background: #f0f4ff;
+            transform: translateX(3px);
+        }
+
+        .bookmark-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .bookmark-page {
+            font-size: 11px;
+            color: #6c757d;
+        }
+
+        .search-box {
+            padding: 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-results {
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .search-result-item {
+            padding: 10px;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            border-left: 3px solid #667eea;
+        }
+
+        .search-result-item:hover {
+            background: #f0f4ff;
+        }
+
+        .thumbnail-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .thumbnail {
+            cursor: pointer;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .thumbnail:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .thumbnail.active {
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102,126,234,0.3);
+        }
+
+        .thumbnail canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .thumbnail-label {
+            text-align: center;
+            padding: 5px;
+            font-size: 11px;
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .share-link-display {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            border: 1px solid #e0e0e0;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .pdf-canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
         }
 
         ::-webkit-scrollbar {
