@@ -1,20 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>【ＰＤＦ】 〈 ⦓Ｒ⦔ｅａｄｅｒ 〉 〖ＰＲＯ〗</title>
-
-    <!-- pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -26,6 +30,7 @@
             flex-direction: column;
             height: calc(100vh - 40px);
         }
+
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -34,79 +39,334 @@
             justify-content: space-between;
             align-items: center;
         }
-        .header h1 { font-size:28px; font-weight:600; }
-        .header-buttons { display:flex; gap:10px; }
-        .btn { padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:500; transition:all .3s; }
-        .btn-primary { background:white; color:#667eea; }
-        .btn-secondary { background:rgba(255,255,255,0.2); color:white; border:1px solid white; }
-        .main-content { display:flex; flex:1; overflow:hidden; }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
         .sidebar {
-            width:300px;
-            background:#f8f9fa;
-            border-right:1px solid #e0e0e0;
-            display:flex;
-            flex-direction:column;
-            overflow:hidden;
-            transition: width .25s ease;
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        .sidebar.hidden { width:0; min-width:0; max-width:0; overflow:hidden; }
-        .sidebar-tabs { display:flex; background:#e9ecef; border-bottom:1px solid #dee2e6; }
-        .tab { flex:1; padding:15px; text-align:center; cursor:pointer; font-weight:500; color:#6c757d; transition:all .3s; border-bottom:3px solid transparent; }
-        .tab.active { color:#667eea; background:white; border-bottom-color:#667eea; }
-        .tab-content { flex:1; overflow-y:auto; padding:20px; }
+
+        .sidebar-tabs {
+            display: flex;
+            background: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #667eea;
+            background: white;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
         .library-item {
-            background:white; padding:15px; margin-bottom:10px; border-radius:10px; cursor:pointer; transition:all .3s; border:2px solid #e0e0e0; position:relative;
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid #e0e0e0;
         }
-        .library-item:hover { border-color:#667eea; transform:translateX(5px); box-shadow:0 5px 15px rgba(102,126,234,0.2); }
-        .library-item.active { border-color:#667eea; background:#f0f4ff; }
-        .library-item-title { font-weight:600; color:#333; margin-bottom:5px; font-size:14px; }
-        .library-item-progress { font-size:12px; color:#6c757d; margin-bottom:8px; }
-        .progress-bar { height:4px; background:#e0e0e0; border-radius:2px; overflow:hidden; }
-        .progress-fill { height:100%; background:linear-gradient(90deg,#667eea,#764ba2); transition:width .3s; }
-        .toc-item { padding:10px; cursor:pointer; border-radius:5px; margin-bottom:5px; transition:all .2s; font-size:14px; }
-        .viewer-container { flex:1; display:flex; flex-direction:column; background:#525659; }
-        .toolbar { background:#2c3034; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; color:white; }
-        .toolbar-left,.toolbar-right { display:flex; gap:10px; align-items:center; }
-        .toolbar-btn { background:#3c4044; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-size:14px; transition:all .2s; }
-        .toolbar-btn:hover { background:#4c5054; }
-        .toolbar-btn:disabled { opacity:.5; cursor:not-allowed; }
-        .page-info { display:flex; align-items:center; gap:10px; }
-        .page-input { width:60px; padding:5px; border-radius:5px; border:1px solid #5c6064; background:#3c4044; color:white; text-align:center; }
-        .pdf-viewer { flex:1; overflow:auto; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
-        .pdf-canvas-container { background:white; box-shadow:0 5px 20px rgba(0,0,0,0.3); display:inline-block; padding:12px; border-radius:8px; }
-        .pdf-canvas-container canvas { display:block; max-width:100%; height:auto; }
-        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:1000; }
-        .modal.active { display:flex; }
-        .modal-content { background:white; padding:30px; border-radius:15px; width:90%; max-width:600px; box-shadow:0 10px 40px rgba(0,0,0,0.3); }
-        .modal-header { font-size:24px; font-weight:600; margin-bottom:20px; color:#333; }
-        .form-group { margin-bottom:20px; }
-        .form-label { display:block; margin-bottom:8px; font-weight:500; color:#555; }
-        .form-input { width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px; font-size:14px; transition:all .3s; }
-        .form-input:focus { outline:none; border-color:#667eea; }
-        .modal-buttons { display:flex; gap:10px; justify-content:flex-end; }
-        .empty-state { text-align:center; padding:40px 20px; color:#6c757d; }
-        .empty-state-icon { font-size:48px; margin-bottom:15px; }
-        .zoom-control { display:flex; align-items:center; gap:10px; color:white; }
-        .delete-btn { background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-size:12px; position:absolute; right:12px; top:12px; }
-        .delete-btn:hover { background:#c82333; }
-        .thumbnail-container { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; padding:10px; }
-        .thumbnail { cursor:pointer; border:2px solid #e0e0e0; border-radius:5px; overflow:hidden; transition:all .2s; background:white; }
-        .thumbnail:hover { border-color:#667eea; transform:scale(1.03); }
-        .thumbnail.active { border-color:#667eea; box-shadow:0 0 10px rgba(102,126,234,0.3); }
-        .thumbnail canvas { width:100%; height:auto; display:block; }
-        .thumbnail-label { text-align:center; padding:5px; font-size:11px; background:#f8f9fa; color:#6c757d; }
-        .search-box { padding:15px; background:#f8f9fa; border-bottom:1px solid #e0e0e0; }
-        .search-input { width:100%; padding:10px; border:2px solid #e0e0e0; border-radius:8px; font-size:14px; }
-        .search-input:focus { outline:none; border-color:#667eea; }
-        .bookmark-item { background:white; padding:12px; margin-bottom:8px; border-radius:8px; cursor:pointer; transition:all .2s; border-left:4px solid #667eea; }
-        .bookmark-title { font-weight:600; font-size:13px; color:#333; margin-bottom:4px; }
-        .bookmark-page { font-size:11px; color:#6c757d; }
-        .pdf-canvas-wrapper { position:relative; display:inline-block; }
-        .canvas-overlay { position:absolute; top:0; left:0; pointer-events:none; }
-        ::-webkit-scrollbar { width:10px; }
-        ::-webkit-scrollbar-track { background:#f1f1f1; }
-        ::-webkit-scrollbar-thumb { background:#888; border-radius:5px; }
-        ::-webkit-scrollbar-thumb:hover { background:#555; }
+
+        .library-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.2);
+        }
+
+        .library-item.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .library-item-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .library-item-progress {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+        }
+
+        .toc-item {
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .toc-item:hover {
+            background: #e9ecef;
+        }
+
+        .viewer-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #525659;
+        }
+
+        .toolbar {
+            background: #2c3034;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar-btn {
+            background: #3c4044;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover {
+            background: #4c5054;
+        }
+
+        .toolbar-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .page-input {
+            width: 60px;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #5c6064;
+            background: #3c4044;
+            color: white;
+            text-align: center;
+        }
+
+        .pdf-viewer {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .pdf-canvas-container {
+            background: white;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .zoom-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body>
@@ -125,21 +385,10 @@
                     <div class="tab active" onclick="switchTab('library')">Library</div>
                     <div class="tab" onclick="switchTab('toc')">Contents</div>
                 </div>
-
                 <div class="tab-content" id="libraryTab">
-                    <div class="search-box">
-                        <input id="librarySearch" class="search-input" placeholder="Filter library..." oninput="renderLibrary()" />
-                    </div>
                     <div id="libraryList"></div>
-
-                    <hr style="margin:12px 0; border:none; border-top:1px solid #e0e0e0;">
-                    <div style="padding:10px">
-                        <strong>Thumbnails</strong>
-                        <div id="thumbnailArea" class="thumbnail-container" style="margin-top:10px"></div>
-                    </div>
                 </div>
-
-                <div class="tab-content" id="tocTab" style="display:none">
+                <div class="tab-content" id="tocTab" style="display: none;">
                     <div id="tocList"></div>
                 </div>
             </div>
@@ -163,479 +412,336 @@
                         <button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
                     </div>
                 </div>
-
                 <div class="pdf-viewer" id="pdfViewer">
                     <div class="empty-state">
                         <div class="empty-state-icon">📄</div>
                         <h3>No PDF Loaded</h3>
-                        <p>Click "Add PDF" to load a document (URL or upload a file)</p>
+                        <p>Click "Add PDF" to load a document from URL</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add modal -->
     <div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
         <div class="modal-content">
             <div class="modal-header">
                 Add PDF Document
                 <button style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;" onclick="closeAddModal()">×</button>
             </div>
-
             <div class="form-group">
                 <label class="form-label">Document Name</label>
                 <input type="text" class="form-input" id="pdfName" placeholder="Enter document name">
             </div>
-
             <div class="form-group">
-                <label class="form-label">PDF URL (or leave empty to upload file)</label>
+                <label class="form-label">PDF URL</label>
                 <input type="text" class="form-input" id="pdfUrl" placeholder="https://example.com/document.pdf">
             </div>
-
-            <div class="form-group">
-                <label class="form-label">Or upload a PDF file</label>
-                <input type="file" id="pdfFileInput" accept="application/pdf" class="form-input" />
-            </div>
-
             <div class="modal-buttons">
                 <button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
-                <button class="btn btn-primary" id="addPdfButton" onclick="addPdf(event)">Add to Library</button>
+                <button class="btn btn-primary" onclick="addPdf()">Add to Library</button>
             </div>
         </div>
     </div>
 
     <script>
-        // === pdf.js worker setup ===
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // === State ===
-        let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]'); // {id, name, url, objectUrl?, currentPage, totalPages, scale, addedDate}
-        let pdfDoc = null;
-        let currentPdfId = null;
+        let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]');
+        let currentPdf = null;
         let currentPage = 1;
         let totalPages = 0;
-        let scale = 1.25;
-        let lastObjectUrl = null; // track for revoking
-        let thumbnailCache = {}; // small canvases cached to avoid regen on every open
+        let scale = 1.5;
+        let pdfDoc = null;
+        let currentPdfId = null;
 
-        // Utility: generate unique ID
-        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-
-        // Update zoom label (show integer percent)
+        // Update zoom display on load
         function updateZoomDisplay() {
-            document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+            document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
         }
 
-        // === Rendering library UI ===
         function renderLibrary() {
             const list = document.getElementById('libraryList');
-            const search = document.getElementById('librarySearch').value.trim().toLowerCase();
             if (library.length === 0) {
                 list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><p>Your library is empty</p></div>';
-                document.getElementById('thumbnailArea').innerHTML = '';
                 return;
             }
-            const filtered = library.filter(item => !search || item.name.toLowerCase().includes(search));
-            list.innerHTML = filtered.map((item, idx) => {
-                const active = currentPdfId === item.id ? 'active' : '';
-                const progressPct = (item.totalPages && item.totalPages > 0) ? Math.round(item.currentPage / item.totalPages * 100) : 0;
-                return `
-                    <div class="library-item ${active}" onclick="loadPdfFromLibraryById('${item.id}')">
-                        <div class="library-item-title">${escapeHtml(item.name || 'Untitled')}</div>
-                        <div class="library-item-progress">Page ${item.currentPage || 1} of ${item.totalPages || 0}</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width:${progressPct}%"></div></div>
-                        <button class="delete-btn" onclick="event.stopPropagation(); deletePdfById('${item.id}')">Delete</button>
+            list.innerHTML = library.map((item, idx) => `
+                <div class="library-item ${currentPdfId === item.id ? 'active' : ''}" onclick="loadPdfFromLibrary(${idx})">
+                    <div class="library-item-title">${item.name}</div>
+                    <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages}</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${(item.currentPage / item.totalPages * 100)}%"></div>
                     </div>
-                `;
-            }).join('');
-
-            // Thumbnails area: show thumbnails of current PDF if any
-            renderThumbnails();
+                    <button class="delete-btn" onclick="event.stopPropagation(); deletePdf(${idx})">Delete</button>
+                </div>
+            `).join('');
         }
 
-        // Escape to avoid injecting HTML
-        function escapeHtml(s) {
-            if (!s) return '';
-            return s.replace(/[&<>"']/g, function(m) {
-                return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m];
-            });
-        }
-
-        // === Modal controls ===
         function openAddModal() {
             document.getElementById('addModal').classList.add('active');
             document.getElementById('pdfName').value = '';
             document.getElementById('pdfUrl').value = '';
-            document.getElementById('pdfFileInput').value = '';
         }
+
         function closeAddModal() {
             document.getElementById('addModal').classList.remove('active');
         }
 
-        // === Add PDF (URL or file) ===
-        async function addPdf(evt) {
-            const addButton = document.getElementById('addPdfButton');
+        async function addPdf() {
+            const name = document.getElementById('pdfName').value.trim();
+            const url = document.getElementById('pdfUrl').value.trim();
+            
+            if (!name || !url) {
+                alert('Please enter both name and URL');
+                return;
+            }
+
+            // Show loading state
+            const addButton = event.target;
             const originalText = addButton.textContent;
             addButton.textContent = 'Loading...';
             addButton.disabled = true;
 
-            const name = document.getElementById('pdfName').value.trim() || 'Untitled';
-            const urlInput = document.getElementById('pdfUrl').value.trim();
-            const fileInput = document.getElementById('pdfFileInput');
-
             try {
-                // If a file is provided, prefer file upload path (reads as ArrayBuffer)
-                if (fileInput.files && fileInput.files.length > 0) {
-                    const file = fileInput.files[0];
-                    const arrayBuffer = await file.arrayBuffer();
-                    // load pdfDoc from data (no CORS needed)
-                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true });
-                    const loaded = await loadingTask.promise;
-                    const id = uid();
-                    const item = {
-                        id,
-                        name,
-                        url: null,
-                        fileName: file.name,
-                        objectUrl: null, // we store nothing; we persist only metadata and the pdf will be reloaded from original source next time. For local file this isn't persistent across sessions.
-                        currentPage: 1,
-                        totalPages: loaded.numPages,
-                        scale: scale,
-                        addedDate: new Date().toISOString(),
-                        volatileData: { arrayBuffer } // keep temporary while session is active to allow immediate view; won't be saved into localStorage
-                    };
-                    library.push(item);
-                    persistLibrary();
-                    renderLibrary();
-                    closeAddModal();
-
-                    // load it
-                    await loadPdfFromLibraryById(id);
-                    return;
-                }
-
-                // If URL provided, attempt to fetch via multiple methods (direct and CORS proxies)
-                if (!urlInput) {
-                    alert('Please provide a PDF URL or upload a PDF file.');
-                    return;
-                }
-
+                // Try multiple CORS proxies for better reliability
                 const proxies = [
-                    `https://corsproxy.io/?${encodeURIComponent(urlInput)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(urlInput)}`,
-                    urlInput
+                    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                    url // Try direct access as fallback
                 ];
 
-                let lastErr = null;
-                let loadedPdf = null;
-                for (const p of proxies) {
+                let pdf = null;
+                let lastError = null;
+
+                for (const proxyUrl of proxies) {
                     try {
-                        const loadingTask = pdfjsLib.getDocument({ url: p, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true });
-                        loadedPdf = await loadingTask.promise;
-                        // success
-                        break;
+                        const loadingTask = pdfjsLib.getDocument({
+                            url: proxyUrl,
+                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                            cMapPacked: true
+                        });
+                        pdf = await loadingTask.promise;
+                        break; // Success! Exit the loop
                     } catch (err) {
-                        lastErr = err;
-                        console.warn('Failed to load via', p, err);
+                        lastError = err;
+                        console.warn(`Failed with proxy: ${proxyUrl}`, err);
+                        continue; // Try next proxy
                     }
                 }
 
-                if (!loadedPdf) {
-                    throw lastErr || new Error('Failed to load PDF via available methods.');
+                if (!pdf) {
+                    throw lastError || new Error('All loading methods failed');
                 }
-
-                const newId = uid();
+                
                 const pdfItem = {
-                    id: newId,
-                    name,
-                    url: urlInput,
+                    id: Date.now(),
+                    name: name,
+                    url: url,
                     currentPage: 1,
-                    totalPages: loadedPdf.numPages,
-                    scale: scale,
+                    totalPages: pdf.numPages,
+                    scale: 1.5,
                     addedDate: new Date().toISOString()
                 };
+                
                 library.push(pdfItem);
-                persistLibrary();
+                localStorage.setItem('pdfLibrary', JSON.stringify(library));
                 renderLibrary();
                 closeAddModal();
-                await loadPdfFromLibraryById(newId);
-            } catch (err) {
-                console.error(err);
-                alert('Failed to add PDF. ' + (err && err.message ? err.message : 'Unknown error'));
+                await loadPdfFromLibrary(library.length - 1);
+            } catch (error) {
+                alert('Failed to load PDF. The URL might be invalid or the PDF might be protected. Error: ' + error.message);
+                console.error(error);
             } finally {
                 addButton.textContent = originalText;
                 addButton.disabled = false;
             }
         }
 
-        // Persist library metadata (do not persist large ArrayBuffers)
-        function persistLibrary() {
-            // Clean volatileData before saving
-            const safe = library.map(item => {
-                const copy = {...item};
-                if (copy.volatileData) delete copy.volatileData;
-                return copy;
-            });
-            localStorage.setItem('pdfLibrary', JSON.stringify(safe));
-        }
-
-        // === Delete PDF ===
-        function deletePdfById(id) {
-            if (!confirm('Are you sure you want to delete this PDF from your library?')) return;
-            const idx = library.findIndex(i => i.id === id);
-            if (idx !== -1) {
-                // revoke objectUrl if present
-                if (library[idx].objectUrl) {
-                    try { URL.revokeObjectURL(library[idx].objectUrl); } catch(e) {}
-                }
-                library.splice(idx,1);
-                persistLibrary();
-                // if we deleted the currently open, clear viewer
-                if (currentPdfId === id) {
-                    pdfDoc = null;
-                    currentPdfId = null;
-                    currentPage = 1;
-                    totalPages = 0;
-                    scale = 1.25;
+        function deletePdf(index) {
+            if (confirm('Are you sure you want to delete this PDF from your library?')) {
+                library.splice(index, 1);
+                localStorage.setItem('pdfLibrary', JSON.stringify(library));
+                renderLibrary();
+                if (library.length === 0) {
                     document.getElementById('pdfViewer').innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">📄</div>
                             <h3>No PDF Loaded</h3>
-                            <p>Click "Add PDF" to load a document</p>
+                            <p>Click "Add PDF" to load a document from URL</p>
                         </div>
                     `;
                 }
-                renderLibrary();
             }
         }
 
-        // === Loading from library (by id) ===
-        async function loadPdfFromLibraryById(id) {
-            const item = library.find(i => i.id === id);
-            if (!item) {
-                alert('PDF not found in library.');
-                return;
-            }
-
-            currentPdfId = id;
+        async function loadPdfFromLibrary(index) {
+            const item = library[index];
+            currentPdfId = item.id;
+            
             // Show loading indicator
             const viewer = document.getElementById('pdfViewer');
             viewer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><h3>Loading PDF...</h3></div>';
-            renderLibrary();
-
+            
             try {
-                // If item has volatileData.arrayBuffer (from upload in this session), use that
-                let loaded = null;
-                if (item.volatileData && item.volatileData.arrayBuffer) {
-                    const loadingTask = pdfjsLib.getDocument({ data: item.volatileData.arrayBuffer, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true });
-                    loaded = await loadingTask.promise;
-                } else if (item.url) {
-                    // Attempt proxies (try direct last)
-                    const proxies = [
-                        `https://corsproxy.io/?${encodeURIComponent(item.url)}`,
-                        `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`,
-                        item.url
-                    ];
-                    let lastErr = null;
-                    for (const p of proxies) {
-                        try {
-                            const loadingTask = pdfjsLib.getDocument({ url: p, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true });
-                            loaded = await loadingTask.promise;
-                            break;
-                        } catch (err) {
-                            lastErr = err;
-                            console.warn('Failed to load via', p, err);
-                        }
+                // Try multiple loading methods for better reliability
+                const proxies = [
+                    `https://corsproxy.io/?${encodeURIComponent(item.url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`,
+                    item.url
+                ];
+
+                let pdf = null;
+                let lastError = null;
+
+                for (const proxyUrl of proxies) {
+                    try {
+                        const loadingTask = pdfjsLib.getDocument({
+                            url: proxyUrl,
+                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                            cMapPacked: true
+                        });
+                        pdf = await loadingTask.promise;
+                        break; // Success!
+                    } catch (err) {
+                        lastError = err;
+                        console.warn(`Failed to load with: ${proxyUrl}`, err);
+                        continue;
                     }
-                    if (!loaded) throw lastErr || new Error('Failed to load PDF via proxies');
-                } else {
-                    // No url and no volatileData => can't reload; inform user
-                    throw new Error('This PDF was uploaded from a local file and cannot be reloaded automatically. Re-upload the file if you want to view it again in a new session.');
                 }
 
-                // Clean thumbnail cache for this doc
-                thumbnailCache = {};
+                if (!pdf) {
+                    throw lastError || new Error('Failed to load PDF from all sources');
+                }
 
-                pdfDoc = loaded;
+                pdfDoc = pdf;
                 totalPages = pdfDoc.numPages;
-                currentPage = item.currentPage || 1;
-                scale = item.scale || 1.25;
-
+                currentPage = item.currentPage;
+                scale = item.scale || 1.5;
+                
                 document.getElementById('totalPages').textContent = totalPages;
                 document.getElementById('pageInput').max = totalPages;
                 updateZoomDisplay();
-
+                
                 await renderPage(currentPage);
                 await loadTableOfContents();
                 renderLibrary();
                 updateProgress();
-            } catch (err) {
-                console.error(err);
-                document.getElementById('pdfViewer').innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>Failed to Load PDF</h3><p>${escapeHtml(err.message || String(err))}</p></div>`;
+            } catch (error) {
+                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
+                console.error(error);
             }
         }
 
-        // === Render a page (main canvas) ===
         async function renderPage(pageNum) {
-            if (!pdfDoc) return;
-            if (pageNum < 1) pageNum = 1;
-            if (pageNum > pdfDoc.numPages) pageNum = pdfDoc.numPages;
-
             const page = await pdfDoc.getPage(pageNum);
             const viewport = page.getViewport({ scale: scale });
-
-            // Create canvas with devicePixelRatio for crisp rendering
+            
             const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            const outputScale = window.devicePixelRatio || 1;
-            canvas.width = Math.floor(viewport.width * outputScale);
-            canvas.height = Math.floor(viewport.height * outputScale);
-            canvas.style.width = Math.floor(viewport.width) + 'px';
-            canvas.style.height = Math.floor(viewport.height) + 'px';
-            ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
-
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
             const renderContext = {
-                canvasContext: ctx,
+                canvasContext: context,
                 viewport: viewport
             };
-
-            // Show a temporary placeholder to avoid flicker
+            
+            await page.render(renderContext).promise;
+            
             const viewer = document.getElementById('pdfViewer');
             viewer.innerHTML = '';
             const container = document.createElement('div');
             container.className = 'pdf-canvas-container';
             container.appendChild(canvas);
             viewer.appendChild(container);
-
-            // render page
-            const renderTask = page.render(renderContext);
-            await renderTask.promise;
-
-            // Update UI
+            
+            document.getElementById('pageInput').value = pageNum;
             currentPage = pageNum;
-            document.getElementById('pageInput').value = currentPage;
+            
             updateProgress();
-            // Ensure prev/next enable state
-            document.getElementById('prevBtn').disabled = (currentPage <= 1);
-            document.getElementById('nextBtn').disabled = (currentPage >= totalPages);
-
-            // update thumbnail selection highlight
-            highlightActiveThumbnail();
         }
 
-        // === Update library progress when page or scale changes ===
         function updateProgress() {
-            if (!currentPdfId) return;
-            const idx = library.findIndex(i => i.id === currentPdfId);
-            if (idx !== -1) {
-                library[idx].currentPage = currentPage;
-                library[idx].scale = scale;
-                persistLibrary();
-                renderLibrary();
+            if (currentPdfId) {
+                const index = library.findIndex(item => item.id === currentPdfId);
+                if (index !== -1) {
+                    library[index].currentPage = currentPage;
+                    library[index].scale = scale;
+                    localStorage.setItem('pdfLibrary', JSON.stringify(library));
+                    renderLibrary();
+                }
             }
         }
 
-        // === Table of contents (outline) ===
         async function loadTableOfContents() {
-            if (!pdfDoc) {
-                document.getElementById('tocList').innerHTML = '<div class="empty-state"><p>No table of contents available</p></div>';
+            const outline = await pdfDoc.getOutline();
+            const tocList = document.getElementById('tocList');
+            
+            if (!outline || outline.length === 0) {
+                tocList.innerHTML = '<div class="empty-state"><p>No table of contents available</p></div>';
                 return;
             }
-            try {
-                const outline = await pdfDoc.getOutline();
-                const tocList = document.getElementById('tocList');
-                if (!outline || outline.length === 0) {
-                    tocList.innerHTML = '<div class="empty-state"><p>No table of contents available</p></div>';
-                    return;
-                }
-
-                function renderOutline(items, level = 0) {
-                    return items.map(item => {
-                        // item.dest may be a string or array or null; we'll pass item to goToTocPage
-                        const sub = item.items && item.items.length > 0 ? renderOutline(item.items, level + 1) : '';
-                        const safeTitle = escapeHtml(item.title || 'Untitled');
-                        return `
-                            <div class="toc-item" style="padding-left:${level*20 + 8}px" onclick="goToTocPage(${JSON.stringify(item.dest)})">
-                                ${safeTitle}
-                            </div>
-                            ${sub}
-                        `;
-                    }).join('');
-                }
-
-                tocList.innerHTML = renderOutline(outline);
-            } catch (err) {
-                console.warn('Error loading outline', err);
-                document.getElementById('tocList').innerHTML = '<div class="empty-state"><p>Error loading contents</p></div>';
+            
+            function renderOutline(items, level = 0) {
+                return items.map(item => {
+                    const pageNum = item.dest ? (Array.isArray(item.dest) ? item.dest[0] : null) : null;
+                    return `
+                        <div class="toc-item" style="padding-left: ${level * 20 + 10}px" onclick="goToTocPage('${item.dest}')">
+                            ${item.title}
+                        </div>
+                        ${item.items ? renderOutline(item.items, level + 1) : ''}
+                    `;
+                }).join('');
             }
+            
+            tocList.innerHTML = renderOutline(outline);
         }
 
-        // Navigate when a TOC item is clicked. destArg is the "dest" entry passed in inline onclick.
-        async function goToTocPage(destArg) {
-            if (!pdfDoc || !destArg) return;
+        async function goToTocPage(dest) {
+            if (!dest) return;
             try {
-                // The simplest robust approach: use pdfDoc.getDestination if possible (pdf.js may expect a dest name)
-                // If destArg is an array (serialized), try to use it directly
-                let dest = destArg;
-
-                // If dest looks like [object] with references, earlier serialization may have broken it; we'll attempt to call pdfDoc.getDestination(dest) if it's a string
-                if (typeof dest === 'string') {
-                    const resolved = await pdfDoc.getDestination(dest);
-                    dest = resolved;
-                }
-
-                if (Array.isArray(dest) && dest.length > 0) {
-                    // first entry is ref to page dictionary object or ref num: pass to getPageIndex
-                    const pageRef = dest[0];
-                    const pageIndex = await pdfDoc.getPageIndex(pageRef);
+                const destArray = await pdfDoc.getDestination(dest);
+                if (destArray) {
+                    const pageIndex = await pdfDoc.getPageIndex(destArray[0]);
                     await renderPage(pageIndex + 1);
-                } else {
-                    // fallback: try to find page by searching for a named dest's page number via getDest
-                    try {
-                        const possible = await pdfDoc.getDestination(dest);
-                        if (possible && Array.isArray(possible)) {
-                            const pageIndex = await pdfDoc.getPageIndex(possible[0]);
-                            await renderPage(pageIndex + 1);
-                        }
-                    } catch (e) {
-                        console.error('Could not navigate to TOC dest', e);
-                    }
                 }
-            } catch (err) {
-                console.error('Error navigating to TOC item:', err);
+            } catch (error) {
+                console.error('Error navigating to TOC item:', error);
             }
         }
 
-        // === Pagination and input ===
         async function nextPage() {
-            if (!pdfDoc) return;
-            if (currentPage < pdfDoc.numPages) await renderPage(currentPage + 1);
-        }
-        async function prevPage() {
-            if (!pdfDoc) return;
-            if (currentPage > 1) await renderPage(currentPage - 1);
-        }
-        async function goToPage() {
-            const pageNum = parseInt(document.getElementById('pageInput').value, 10);
-            if (!pdfDoc || isNaN(pageNum)) return;
-            if (pageNum >= 1 && pageNum <= pdfDoc.numPages) await renderPage(pageNum);
-            else document.getElementById('pageInput').value = currentPage;
+            if (currentPage < totalPages) {
+                await renderPage(currentPage + 1);
+            }
         }
 
-        // === Zoom ===
+        async function prevPage() {
+            if (currentPage > 1) {
+                await renderPage(currentPage - 1);
+            }
+        }
+
+        async function goToPage() {
+            const pageNum = parseInt(document.getElementById('pageInput').value);
+            if (pageNum >= 1 && pageNum <= totalPages) {
+                await renderPage(pageNum);
+            }
+        }
+
         async function zoomIn() {
-            scale = Math.round((scale + 0.25) * 100) / 100;
+            scale += 0.25;
             updateZoomDisplay();
             if (pdfDoc) {
                 await renderPage(currentPage);
                 updateProgress();
             }
         }
+
         async function zoomOut() {
-            if (scale > 0.25) {
-                scale = Math.round((scale - 0.25) * 100) / 100;
+            if (scale > 0.5) {
+                scale -= 0.25;
                 updateZoomDisplay();
                 if (pdfDoc) {
                     await renderPage(currentPage);
@@ -644,11 +750,10 @@
             }
         }
 
-        // === Sidebar, fullscreen, tab switching ===
         function switchTab(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-
+            
             if (tab === 'library') {
                 document.querySelectorAll('.tab')[0].classList.add('active');
                 document.getElementById('libraryTab').style.display = 'block';
@@ -660,148 +765,36 @@
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('hidden');
+            sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none';
         }
 
-        async function toggleFullscreen() {
+        function toggleFullscreen() {
             const container = document.querySelector('.container');
             const btn = document.getElementById('fullscreenBtn');
-            try {
-                if (!document.fullscreenElement) {
-                    await container.requestFullscreen();
+            
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().then(() => {
                     btn.textContent = '⛶ Exit Fullscreen';
-                } else {
-                    await document.exitFullscreen();
+                }).catch(err => {
+                    alert('Error attempting to enable fullscreen: ' + err.message);
+                });
+            } else {
+                document.exitFullscreen().then(() => {
                     btn.textContent = '⛶ Fullscreen';
-                }
-            } catch (err) {
-                alert('Error attempting to enable fullscreen: ' + err.message);
+                });
             }
         }
 
+        // Listen for fullscreen changes (in case user presses ESC)
         document.addEventListener('fullscreenchange', () => {
             const btn = document.getElementById('fullscreenBtn');
-            if (!document.fullscreenElement) btn.textContent = '⛶ Fullscreen';
+            if (!document.fullscreenElement) {
+                btn.textContent = '⛶ Fullscreen';
+            }
         });
 
-        // === Thumbnails ===
-        async function renderThumbnails() {
-            const area = document.getElementById('thumbnailArea');
-            area.innerHTML = '';
-            if (!pdfDoc) return;
-
-            // generate small canvas for each page, but limit to first 50 to avoid huge CPU/memory work
-            const maxThumbs = Math.min(pdfDoc.numPages, 50);
-            const fragment = document.createDocumentFragment();
-
-            for (let p=1; p<=maxThumbs; p++) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'thumbnail';
-                wrapper.dataset.page = p;
-
-                // if cached, use cached canvas clone
-                if (thumbnailCache[p]) {
-                    const clone = thumbnailCache[p].cloneNode(true);
-                    wrapper.appendChild(clone);
-                } else {
-                    const canvas = document.createElement('canvas');
-                    // small scale for thumb
-                    const thumbScale = 0.2; // 20% size
-                    try {
-                        const page = await pdfDoc.getPage(p);
-                        const viewport = page.getViewport({ scale: thumbScale });
-                        const ctx = canvas.getContext('2d');
-                        const outputScale = 1; // thumbnails don't need DPR scaling to reduce memory; they will remain readable
-                        canvas.width = Math.floor(viewport.width * outputScale);
-                        canvas.height = Math.floor(viewport.height * outputScale);
-                        canvas.style.width = Math.floor(viewport.width) + 'px';
-                        canvas.style.height = Math.floor(viewport.height) + 'px';
-                        await page.render({ canvasContext: ctx, viewport }).promise;
-                    } catch (err) {
-                        // if thumbnail fails, create placeholder
-                        const ctx = canvas.getContext('2d');
-                        canvas.width = 120; canvas.height = 160;
-                        ctx.fillStyle = '#f4f4f4';
-                        ctx.fillRect(0,0,canvas.width,canvas.height);
-                        ctx.fillStyle = '#666';
-                        ctx.fillText('?', 10, 20);
-                    }
-                    wrapper.appendChild(canvas);
-                    thumbnailCache[p] = canvas; // cache it
-                }
-
-                const label = document.createElement('div');
-                label.className = 'thumbnail-label';
-                label.textContent = 'Page ' + p;
-                wrapper.appendChild(label);
-
-                wrapper.addEventListener('click', async (e) => {
-                    await renderPage(p);
-                    highlightActiveThumbnail();
-                });
-
-                fragment.appendChild(wrapper);
-            }
-
-            area.appendChild(fragment);
-            highlightActiveThumbnail();
-        }
-
-        function highlightActiveThumbnail() {
-            const thumbs = document.querySelectorAll('.thumbnail');
-            thumbs.forEach(t => {
-                if (parseInt(t.dataset.page,10) === currentPage) t.classList.add('active');
-                else t.classList.remove('active');
-            });
-        }
-
-        // === initialize UI ===
-        function init() {
-            renderLibrary();
-            updateZoomDisplay();
-            // if there is at least one in library, keep it but don't auto-open (safer). Optionally open last used:
-            const last = library[library.length - 1];
-            if (last) {
-                // don't auto-load to avoid CORS surprises; but if last item had volatileData (uploaded in session), load it
-                if (last.volatileData) {
-                    loadPdfFromLibraryById(last.id).catch(err => console.warn(err));
-                }
-            }
-        }
-
-        // Expose functions used inline by HTML (they're declared above but ensure global scope)
-        window.openAddModal = openAddModal;
-        window.closeAddModal = closeAddModal;
-        window.addPdf = addPdf;
-        window.loadPdfFromLibrary = function(idx) {
-            // original signature for compatibility (index)
-            if (typeof idx === 'number') {
-                if (idx >=0 && idx < library.length) loadPdfFromLibraryById(library[idx].id);
-            }
-        };
-        window.loadPdfFromLibraryById = loadPdfFromLibraryById;
-        window.deletePdf = function(idx) {
-            // original signature for compatibility (index)
-            if (typeof idx === 'number') {
-                if (idx >=0 && idx < library.length) deletePdfById(library[idx].id);
-            }
-        };
-        window.deletePdfById = deletePdfById;
-        window.prevPage = prevPage;
-        window.nextPage = nextPage;
-        window.goToPage = goToPage;
-        window.zoomIn = zoomIn;
-        window.zoomOut = zoomOut;
-        window.switchTab = switchTab;
-        window.toggleSidebar = toggleSidebar;
-        window.toggleFullscreen = toggleFullscreen;
-        window.goToTocPage = goToTocPage;
-
-        // safe init
-        init();
-
-        // Expose library for quick debugging in console
-        window._pdfReaderLibrary = library;
+        // Initialize
+        renderLibrary();
     </script>
 </body>
 </html>
