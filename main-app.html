@@ -99,18 +99,21 @@
             display: flex;
             background: #e9ecef;
             border-bottom: 1px solid #dee2e6;
+            overflow-x: auto;
         }
 
         .tab {
             flex: 1;
-            padding: 12px 8px;
+            min-width: 80px;
+            padding: 15px 8px;
             text-align: center;
             cursor: pointer;
             font-weight: 500;
-            font-size: 13px;
+            font-size: 12px;
             color: #6c757d;
             transition: all 0.3s;
             border-bottom: 3px solid transparent;
+            white-space: nowrap;
         }
 
         .tab.active {
@@ -123,6 +126,11 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .library-item {
@@ -269,17 +277,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
             pointer-events: none;
-        }
-
-        .highlight {
-            position: absolute;
-            background: rgba(255, 255, 0, 0.3);
-            pointer-events: auto;
-            cursor: pointer;
-            border: 1px solid rgba(255, 255, 0, 0.5);
         }
 
         .note-marker {
@@ -292,9 +290,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: bold;
             pointer-events: auto;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            color: #333;
         }
 
         .signature-marker {
@@ -306,6 +306,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 5px;
         }
 
         .signature-img {
@@ -346,15 +347,13 @@
             font-weight: 600;
             margin-bottom: 20px;
             color: #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
         .close-btn {
+            float: right;
             background: none;
             border: none;
-            font-size: 28px;
+            font-size: 24px;
             cursor: pointer;
             color: #999;
         }
@@ -428,29 +427,12 @@
             background: #c82333;
         }
 
-        .color-picker {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .color-option {
-            width: 30px;
-            height: 30px;
-            border-radius: 5px;
-            cursor: pointer;
-            border: 2px solid transparent;
-        }
-
-        .color-option.active {
-            border-color: #333;
-        }
-
         .signature-canvas {
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             cursor: crosshair;
             touch-action: none;
+            width: 100%;
         }
 
         .stats-grid {
@@ -461,14 +443,15 @@
         }
 
         .stat-card {
-            background: #f8f9fa;
-            padding: 15px;
+            background: white;
+            padding: 20px;
             border-radius: 10px;
             text-align: center;
+            border: 2px solid #e0e0e0;
         }
 
         .stat-value {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 700;
             color: #667eea;
             margin-bottom: 5px;
@@ -478,6 +461,7 @@
             font-size: 12px;
             color: #6c757d;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .annotation-item {
@@ -492,6 +476,7 @@
 
         .annotation-item:hover {
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transform: translateX(5px);
         }
 
         .annotation-text {
@@ -515,12 +500,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
+            padding: 15px 0;
             border-bottom: 1px solid #e0e0e0;
         }
 
         .accessibility-option:last-child {
             border-bottom: none;
+        }
+
+        .accessibility-label {
+            font-size: 14px;
+            color: #333;
         }
 
         .toggle-switch {
@@ -577,7 +567,7 @@
             <h1>Continua | PDF Reader PRO</h1>
             <div class="header-buttons">
                 <button class="btn btn-primary" onclick="openAddModal()">+ Add PDF</button>
-                <button class="btn btn-secondary" onclick="toggleSidebar()">☰ Menu</button>
+                <button class="btn btn-secondary" onclick="toggleSidebar()">Menu</button>
             </div>
         </div>
 
@@ -590,16 +580,16 @@
                     <div class="tab" onclick="switchTab('stats')">Stats</div>
                     <div class="tab" onclick="switchTab('access')">Access</div>
                 </div>
-                <div class="tab-content" id="libraryTab">
+                <div class="tab-content active" id="libraryTab">
                     <div id="libraryList"></div>
                 </div>
-                <div class="tab-content" id="tocTab" style="display: none;">
+                <div class="tab-content" id="tocTab">
                     <div id="tocList"></div>
                 </div>
-                <div class="tab-content" id="notesTab" style="display: none;">
+                <div class="tab-content" id="notesTab">
                     <div id="notesList"></div>
                 </div>
-                <div class="tab-content" id="statsTab" style="display: none;">
+                <div class="tab-content" id="statsTab">
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-value" id="totalPagesRead">0</div>
@@ -618,25 +608,20 @@
                             <div class="stat-label">Completion</div>
                         </div>
                     </div>
-                    <div id="achievementsList"></div>
                 </div>
-                <div class="tab-content" id="accessTab" style="display: none;">
+                <div class="tab-content" id="accessTab">
                     <div class="accessibility-panel">
                         <div class="accessibility-option">
-                            <span>Text-to-Speech</span>
+                            <span class="accessibility-label">Text-to-Speech</span>
                             <div class="toggle-switch" onclick="toggleTTS()" id="ttsToggle"></div>
                         </div>
                         <div class="accessibility-option">
-                            <span>High Contrast</span>
+                            <span class="accessibility-label">High Contrast</span>
                             <div class="toggle-switch" onclick="toggleHighContrast()" id="contrastToggle"></div>
                         </div>
                         <div class="accessibility-option">
-                            <span>Dyslexia Font</span>
+                            <span class="accessibility-label">Dyslexia Font</span>
                             <div class="toggle-switch" onclick="toggleDyslexiaFont()" id="fontToggle"></div>
-                        </div>
-                        <div class="form-group" style="margin-top: 20px;">
-                            <label class="form-label">Reading Speed</label>
-                            <input type="range" min="0.5" max="2" step="0.1" value="1" id="ttsSpeed" style="width: 100%;">
                         </div>
                     </div>
                 </div>
@@ -645,23 +630,22 @@
             <div class="viewer-container">
                 <div class="toolbar">
                     <div class="toolbar-left">
-                        <button class="toolbar-btn" onclick="prevPage()" id="prevBtn">← Previous</button>
+                        <button class="toolbar-btn" onclick="prevPage()" id="prevBtn">Previous</button>
                         <div class="page-info">
                             <input type="number" class="page-input" id="pageInput" value="1" min="1" onchange="goToPage()">
                             <span>/ <span id="totalPages">0</span></span>
                         </div>
-                        <button class="toolbar-btn" onclick="nextPage()" id="nextBtn">Next →</button>
+                        <button class="toolbar-btn" onclick="nextPage()" id="nextBtn">Next</button>
                     </div>
                     <div class="toolbar-right">
-                        <button class="toolbar-btn" onclick="toggleAnnotationMode('highlight')" id="highlightBtn"> Highlight</button>
-                        <button class="toolbar-btn" onclick="toggleAnnotationMode('note')" id="noteBtn"> Note</button>
-                        <button class="toolbar-btn" onclick="openSignatureModal()" id="signBtn"> Sign</button>
+                        <button class="toolbar-btn" onclick="toggleAnnotationMode('note')" id="noteBtn">Add Note</button>
+                        <button class="toolbar-btn" onclick="openSignatureModal()" id="signBtn">Sign</button>
                         <div class="zoom-control">
                             <button class="toolbar-btn" onclick="zoomOut()">-</button>
                             <span id="zoomLevel">100%</span>
                             <button class="toolbar-btn" onclick="zoomIn()">+</button>
                         </div>
-                        <button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
+                        <button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">Fullscreen</button>
                     </div>
                 </div>
                 <div class="pdf-viewer" id="pdfViewer">
@@ -675,7 +659,6 @@
         </div>
     </div>
 
-    <!-- Add PDF Modal -->
     <div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
         <div class="modal-content">
             <div class="modal-header">
@@ -697,7 +680,6 @@
         </div>
     </div>
 
-    <!-- Note Modal -->
     <div class="modal" id="noteModal" onclick="if(event.target === this) closeNoteModal()">
         <div class="modal-content">
             <div class="modal-header">
@@ -715,7 +697,6 @@
         </div>
     </div>
 
-    <!-- Signature Modal -->
     <div class="modal" id="signatureModal" onclick="if(event.target === this) closeSignatureModal()">
         <div class="modal-content">
             <div class="modal-header">
@@ -740,6 +721,8 @@
         let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]');
         let annotations = JSON.parse(localStorage.getItem('annotations') || '{}');
         let stats = JSON.parse(localStorage.getItem('stats') || '{"pagesRead": 0, "lastReadDate": null, "streak": 0}');
+        let accessibilitySettings = JSON.parse(localStorage.getItem('accessibility') || '{"tts": false, "contrast": false, "dyslexiaFont": false}');
+        
         let currentPdf = null;
         let currentPage = 1;
         let totalPages = 0;
@@ -747,13 +730,8 @@
         let pdfDoc = null;
         let currentPdfId = null;
         let annotationMode = null;
-        let highlightColor = 'rgba(255, 255, 0, 0.3)';
         let currentSignature = null;
-        let ttsEnabled = false;
-        let ttsUtterance = null;
-
-        // Accessibility settings
-        let accessibilitySettings = JSON.parse(localStorage.getItem('accessibility') || '{"tts": false, "contrast": false, "dyslexiaFont": false}');
+        let notePosition = null;
 
         function updateZoomDisplay() {
             document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
@@ -762,7 +740,7 @@
         function renderLibrary() {
             const list = document.getElementById('libraryList');
             if (library.length === 0) {
-                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>Your library is empty</p></div>';
+                list.innerHTML = '<div class="empty-state"><p>Your library is empty</p></div>';
                 return;
             }
             list.innerHTML = library.map((item, idx) => `
@@ -815,15 +793,14 @@
 
             list.innerHTML = pdfAnnotations.map((ann, idx) => `
                 <div class="annotation-item" onclick="goToAnnotation(${ann.page})">
-                    <div class="annotation-text">${ann.type === 'note' ? ann.text : 'Highlight'}</div>
-                    <div class="annotation-meta">Page ${ann.page} • ${ann.type}</div>
+                    <div class="annotation-text">${ann.type === 'note' ? ann.text : 'Signature'}</div>
+                    <div class="annotation-meta">Page ${ann.page} - ${ann.type}</div>
                 </div>
             `).join('');
         }
 
         function goToAnnotation(page) {
             renderPage(page);
-            switchTab('library');
         }
 
         function toggleAnnotationMode(mode) {
@@ -847,8 +824,6 @@
             document.getElementById('addModal').classList.remove('active');
         }
 
-        let notePosition = null;
-
         function openNoteModal(x, y) {
             notePosition = {x, y, page: currentPage};
             document.getElementById('noteModal').classList.add('active');
@@ -859,6 +834,8 @@
         function closeNoteModal() {
             document.getElementById('noteModal').classList.remove('active');
             notePosition = null;
+            annotationMode = null;
+            document.getElementById('noteBtn').classList.remove('active');
         }
 
         function saveNote() {
@@ -898,17 +875,51 @@
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
 
-            canvas.onmousedown = (e) => {
+            const startDrawing = (e) => {
                 drawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
                 ctx.beginPath();
-                ctx.moveTo(e.offsetX, e.offsetY);
+                ctx.moveTo(x, y);
             };
 
-            canvas.onmousemove = (e) => {
+            const draw = (e) => {
                 if (!drawing) return;
-                ctx.lineTo(e.offsetX, e.offsetY);
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                ctx.lineTo(x, y);
                 ctx.stroke();
             };
 
-            canvas.onmouseup = () => drawing = false;
-            canvas.onmouseleave = () => drawing = false;
+            const stopDrawing = () => {
+                drawing = false;
+            };
+
+            canvas.onmousedown = startDrawing;
+            canvas.onmousemove = draw;
+            canvas.onmouseup = stopDrawing;
+            canvas.onmouseleave = stopDrawing;
+
+            canvas.ontouchstart = startDrawing;
+            canvas.ontouchmove = draw;
+            canvas.ontouchend = stopDrawing;
+        }
+
+        function clearSignature() {
+            const canvas = document.getElementById('signatureCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function saveSignature() {
+            const canvas = document.getElementById('signatureCanvas');
+            currentSignature = canvas.toDataURL();
+            closeSignatureModal();
+            annotationMode = 'signature';
+            document.getElementById('signBtn').classList.add('active');
+        }
+
+        function toggleTTS() {
