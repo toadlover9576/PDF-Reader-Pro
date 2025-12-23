@@ -507,9 +507,10 @@
             try {
                 // Try multiple CORS proxies for better reliability
                 const proxies = [
+                    url, // Try direct access first
                     `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                    url // Try direct access as fallback
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
                 ];
 
                 let pdf = null;
@@ -520,9 +521,16 @@
                         const loadingTask = pdfjsLib.getDocument({
                             url: proxyUrl,
                             cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                            cMapPacked: true
+                            cMapPacked: true,
+                            withCredentials: false
                         });
-                        pdf = await loadingTask.promise;
+                        
+                        // Add timeout to prevent infinite loading
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Loading timeout')), 10000)
+                        );
+                        
+                        pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
                         break; // Success! Exit the loop
                     } catch (err) {
                         lastError = err;
@@ -587,9 +595,10 @@
             try {
                 // Try multiple loading methods for better reliability
                 const proxies = [
+                    item.url, // Try direct first
                     `https://corsproxy.io/?${encodeURIComponent(item.url)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`,
-                    item.url
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(item.url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`
                 ];
 
                 let pdf = null;
@@ -600,9 +609,16 @@
                         const loadingTask = pdfjsLib.getDocument({
                             url: proxyUrl,
                             cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                            cMapPacked: true
+                            cMapPacked: true,
+                            withCredentials: false
                         });
-                        pdf = await loadingTask.promise;
+                        
+                        // Add timeout to prevent infinite loading
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Loading timeout')), 10000)
+                        );
+                        
+                        pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
                         break; // Success!
                     } catch (err) {
                         lastError = err;
