@@ -486,26 +486,33 @@
             list.innerHTML = library.map((item, idx) => `
                 <div class="library-item ${currentPdfId === item.id ? 'active' : ''}" 
                      draggable="true" 
-                     data-index="${idx}"
-                     onclick="loadPdfFromLibrary(${idx})">
+                     data-index="${idx}">
                     <div class="library-item-title">${item.name}</div>
                     <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages}</div>
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: ${(item.currentPage / item.totalPages * 100)}%"></div>
                     </div>
-                    <button class="delete-btn" onclick="event.stopPropagation(); deletePdf(${idx})">Delete</button>
+                    <button class="delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deletePdf(${idx})">Delete</button>
                 </div>
             `).join('');
             
-            // Add drag and drop event listeners to each item
+            // Add drag and drop event listeners AND click handlers
             const items = list.querySelectorAll('.library-item');
-            items.forEach(item => {
+            items.forEach((item, idx) => {
+                // Drag events
                 item.addEventListener('dragstart', handleDragStart);
                 item.addEventListener('dragend', handleDragEnd);
                 item.addEventListener('dragover', handleDragOver);
                 item.addEventListener('dragenter', handleDragEnter);
                 item.addEventListener('drop', handleDrop);
                 item.addEventListener('dragleave', handleDragLeave);
+                
+                // Click to load PDF (separate from drag)
+                item.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('delete-btn')) {
+                        loadPdfFromLibrary(idx);
+                    }
+                });
             });
         }
 
@@ -513,36 +520,51 @@
             draggedIndex = parseInt(this.getAttribute('data-index'));
             this.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.innerHTML);
+            e.dataTransfer.setData('text/plain', draggedIndex);
+            
+            // Prevent click from firing
+            setTimeout(() => {
+                this.style.opacity = '0.5';
+            }, 0);
         }
 
         function handleDragEnd(e) {
             this.classList.remove('dragging');
+            this.style.opacity = '';
+            
             // Remove drag-over class from all items
             document.querySelectorAll('.library-item').forEach(item => {
                 item.classList.remove('drag-over');
             });
+            
+            draggedIndex = null;
         }
 
         function handleDragOver(e) {
-            if (e.preventDefault) {
-                e.preventDefault();
-            }
+            e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
+            
+            const dropIndex = parseInt(this.getAttribute('data-index'));
+            if (draggedIndex !== null && draggedIndex !== dropIndex) {
+                this.classList.add('drag-over');
+            }
+            
             return false;
         }
 
         function handleDragEnter(e) {
+            e.preventDefault();
             const dropIndex = parseInt(this.getAttribute('data-index'));
-            if (draggedIndex !== dropIndex) {
+            if (draggedIndex !== null && draggedIndex !== dropIndex) {
                 this.classList.add('drag-over');
             }
         }
 
         function handleDrop(e) {
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
+            e.preventDefault();
+            e.stopPropagation();
+            
+            this.classList.remove('drag-over');
             
             const dropIndex = parseInt(this.getAttribute('data-index'));
             
@@ -552,24 +574,23 @@
                 library[draggedIndex] = library[dropIndex];
                 library[dropIndex] = temp;
                 
-                // Save and re-render with smooth animation
+                // Save to localStorage
                 localStorage.setItem('pdfLibrary', JSON.stringify(library));
                 
-                // Add a subtle animation effect
-                this.style.transition = 'all 0.3s ease';
-                this.style.transform = 'scale(1.1)';
-                setTimeout(() => {
-                    this.style.transform = '';
-                    renderLibrary();
-                }, 150);
+                // Re-render with animation
+                renderLibrary();
             }
             
             return false;
         }
 
         function handleDragLeave(e) {
-            // Only remove if we're actually leaving the element
-            if (e.target === this) {
+            const rect = this.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Check if we're truly leaving the element
+            if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
                 this.classList.remove('drag-over');
             }
         }
@@ -685,7 +706,7 @@
             
             // Show loading indicator
             const viewer = document.getElementById('pdfViewer');
-            viewer.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><h3>Loading PDF...</h3></div>';
+            viewer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">Initializing</div><h3>Loading PDF...</h3></div>';
             
             try {
                 // Try multiple loading methods for better reliability
@@ -740,7 +761,7 @@
                 renderLibrary();
                 updateProgress();
             } catch (error) {
-                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon"></div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
+                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">Failed</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
                 console.error(error);
             }
         }
