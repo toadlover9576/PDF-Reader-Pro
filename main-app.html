@@ -657,7 +657,7 @@
                 if (library.length === 0) {
                     document.getElementById('pdfViewer').innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-icon">📄</div>
+                            <div class="empty-state-icon">Empty</div>
                             <h3>No PDF Loaded</h3>
                             <p>Click "Add PDF" to load a document from URL</p>
                         </div>
@@ -727,7 +727,7 @@
                 renderLibrary();
                 updateProgress();
             } catch (error) {
-                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
+                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">Error</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
                 console.error(error);
             }
         }
