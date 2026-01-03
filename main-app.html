@@ -130,9 +130,10 @@
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 10px;
-            cursor: pointer;
+            cursor: grab;
             transition: all 0.3s;
             border: 2px solid #e0e0e0;
+            position: relative;
         }
 
         .library-item:hover {
@@ -144,6 +145,20 @@
         .library-item.active {
             border-color: #667eea;
             background: #f0f4ff;
+        }
+
+        .library-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102,126,234,0.4);
+            z-index: 1000;
+        }
+
+        .library-item.drag-over {
+            border-color: #764ba2;
+            background: #f8f0ff;
+            transform: translateY(-5px);
         }
 
         .library-item-title {
@@ -415,7 +430,7 @@
                 </div>
                 <div class="pdf-viewer" id="pdfViewer">
                     <div class="empty-state">
-                        <div class="empty-state-icon"></div>
+                        <div class="empty-state-icon">Empty</div>
                         <h3>No PDF Loaded</h3>
                         <p>Click "Add PDF" to load a document from URL</p>
                     </div>
@@ -455,6 +470,7 @@
         let scale = 1.5;
         let pdfDoc = null;
         let currentPdfId = null;
+        let draggedIndex = null;
 
         // Update zoom display on load
         function updateZoomDisplay() {
@@ -464,11 +480,14 @@
         function renderLibrary() {
             const list = document.getElementById('libraryList');
             if (library.length === 0) {
-                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>Your library is empty</p></div>';
+                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><p>Your library is empty</p></div>';
                 return;
             }
             list.innerHTML = library.map((item, idx) => `
-                <div class="library-item ${currentPdfId === item.id ? 'active' : ''}" onclick="loadPdfFromLibrary(${idx})">
+                <div class="library-item ${currentPdfId === item.id ? 'active' : ''}" 
+                     draggable="true" 
+                     data-index="${idx}"
+                     onclick="loadPdfFromLibrary(${idx})">
                     <div class="library-item-title">${item.name}</div>
                     <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages}</div>
                     <div class="progress-bar">
@@ -477,6 +496,82 @@
                     <button class="delete-btn" onclick="event.stopPropagation(); deletePdf(${idx})">Delete</button>
                 </div>
             `).join('');
+            
+            // Add drag and drop event listeners to each item
+            const items = list.querySelectorAll('.library-item');
+            items.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('dragenter', handleDragEnter);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragleave', handleDragLeave);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedIndex = parseInt(this.getAttribute('data-index'));
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            // Remove drag-over class from all items
+            document.querySelectorAll('.library-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            const dropIndex = parseInt(this.getAttribute('data-index'));
+            if (draggedIndex !== dropIndex) {
+                this.classList.add('drag-over');
+            }
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            const dropIndex = parseInt(this.getAttribute('data-index'));
+            
+            if (draggedIndex !== null && draggedIndex !== dropIndex) {
+                // Swap the items in the library array
+                const temp = library[draggedIndex];
+                library[draggedIndex] = library[dropIndex];
+                library[dropIndex] = temp;
+                
+                // Save and re-render with smooth animation
+                localStorage.setItem('pdfLibrary', JSON.stringify(library));
+                
+                // Add a subtle animation effect
+                this.style.transition = 'all 0.3s ease';
+                this.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                    renderLibrary();
+                }, 150);
+            }
+            
+            return false;
+        }
+
+        function handleDragLeave(e) {
+            // Only remove if we're actually leaving the element
+            if (e.target === this) {
+                this.classList.remove('drag-over');
+            }
         }
 
         function openAddModal() {
@@ -575,7 +670,7 @@
                 if (library.length === 0) {
                     document.getElementById('pdfViewer').innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-icon">📄</div>
+                            <div class="empty-state-icon">Empty</div>
                             <h3>No PDF Loaded</h3>
                             <p>Click "Add PDF" to load a document from URL</p>
                         </div>
@@ -645,7 +740,7 @@
                 renderLibrary();
                 updateProgress();
             } catch (error) {
-                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
+                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon"></div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
                 console.error(error);
             }
         }
