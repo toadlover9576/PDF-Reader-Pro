@@ -130,7 +130,7 @@ body {
     padding: 12px 10px;
     margin-bottom: 10px;
     border-radius: 10px;
-    cursor: pointer;
+    cursor: grab;
     transition: all 0.3s;
     border: 2px solid #e0e0e0;
     user-select: none;
@@ -148,6 +148,18 @@ body {
 .library-item.active {
     border-color: #667eea;
     background: #f0f4ff;
+}
+
+.library-item.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+}
+
+.library-item.drag-over {
+    border-color: #667eea;
+    background: #f0f4ff;
+    transform: scale(1.02);
+    box-shadow: 0 10px 25px rgba(102,126,234,0.3);
 }
 
 .library-item-main {
@@ -473,7 +485,7 @@ body {
 <body>
 <div class="container">
 <div class="header">
-<h1> Continua | PDF Reader PRO</h1>
+<h1>Continua | PDF Reader PRO</h1>
 <div class="header-buttons">
 <button class="btn btn-primary" onclick="openAddModal()">+ Add PDF</button>
 <button class="btn btn-secondary" onclick="toggleSidebar()">☰ Menu</button>
@@ -604,6 +616,10 @@ localStorage.setItem('pdfLibrary', JSON.stringify(library));
 localStorage.setItem('pdfFolders', JSON.stringify(folders));
 localStorage.setItem('pdfActiveFolder', activeFolder);
 
+// DRAG & DROP VARIABLES
+let draggedItem = null;
+let draggedIndex = -1;
+
 function saveFolders() {
     localStorage.setItem('pdfFolders', JSON.stringify(folders));
     localStorage.setItem('pdfActiveFolder', activeFolder);
@@ -644,6 +660,112 @@ function changeFolder() {
     activeFolder = select.value;
     saveFolders();
     renderLibrary();
+}
+
+// DRAG & DROP FUNCTIONS
+function handleDragStart(e, index) {
+    draggedItem = e.target.closest('.library-item');
+    draggedIndex = index;
+    draggedItem.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', index);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const item = e.target.closest('.library-item');
+    if (item && item !== draggedItem) {
+        item.classList.add('drag-over');
+    }
+}
+
+function handleDragEnter(e) {
+    e.preventDefault();
+    const item = e.target.closest('.library-item');
+    if (item && item !== draggedItem) {
+        item.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    const item = e.target.closest('.library-item');
+    if (item) {
+        item.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const dropItem = e.target.closest('.library-item');
+    const dropIndex = parseInt(dropItem.dataset.index);
+    
+    // Clear all drag-over states
+    document.querySelectorAll('.library-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    
+    if (draggedIndex !== -1 && dropIndex !== -1 && draggedIndex !== dropIndex) {
+        // Reorder the library array
+        const visibleItems = getVisibleItems();
+        const draggedBook = visibleItems[draggedIndex];
+        visibleItems.splice(draggedIndex, 1);
+        visibleItems.splice(dropIndex, 0, draggedBook);
+        
+        // Update full library with new order
+        updateLibraryOrder(visibleItems);
+        localStorage.setItem('pdfLibrary', JSON.stringify(library));
+        renderLibrary();
+    }
+    
+    // Reset drag state
+    if (draggedItem) {
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+    }
+    draggedIndex = -1;
+}
+
+function handleDragEnd(e) {
+    document.querySelectorAll('.library-item').forEach(item => {
+        item.classList.remove('drag-over', 'dragging');
+    });
+    draggedItem = null;
+    draggedIndex = -1;
+}
+
+function getVisibleItems() {
+    if (activeFolder === 'All') {
+        return [...library];
+    } else {
+        return library.filter(item =>
+            Array.isArray(item.folders) && item.folders.includes(activeFolder)
+        );
+    }
+}
+
+function updateLibraryOrder(visibleItems) {
+    if (activeFolder === 'All') {
+        library = visibleItems;
+    } else {
+        // For folder view, reorder only within that folder
+        const folderBooks = library.filter(item => 
+            Array.isArray(item.folders) && item.folders.includes(activeFolder)
+        );
+        const otherBooks = library.filter(item => 
+            !Array.isArray(item.folders) || !item.folders.includes(activeFolder)
+        );
+        
+        // Replace folder books with reordered ones
+        const newLibrary = [...otherBooks];
+        visibleItems.forEach(book => {
+            const existingIndex = library.findIndex(b => b.id === book.id);
+            if (existingIndex !== -1) {
+                newLibrary.push(library[existingIndex]);
+            }
+        });
+        library = newLibrary;
+    }
 }
 
 function addFolder() {
@@ -828,30 +950,37 @@ function renderLibrary() {
         return;
     }
 
-    list.innerHTML = visibleItems.map((item) => {
+    list.innerHTML = visibleItems.map((item, displayIndex) => {
         const realIndex = library.findIndex(b => b.id === item.id);
         const canRemoveFromFolder = activeFolder !== 'All' &&
             Array.isArray(item.folders) &&
             item.folders.includes(activeFolder);
         return `
-        <div class="library-item ${currentPdfId === item.id ? 'active' : ''}"
-             data-index="${realIndex}">
-            <div class="library-item-main" onclick="loadPdfFromLibrary(${realIndex})">
+        <div class="library-item" 
+             data-index="${realIndex}"
+             draggable="true"
+             ondragstart="handleDragStart(event, ${displayIndex})"
+             ondragover="handleDragOver(event)"
+             ondragenter="handleDragEnter(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)"
+             ondragend="handleDragEnd(event)">
+            <div class="library-item-main" onclick="event.stopPropagation(); loadPdfFromLibrary(${realIndex})">
                 <div class="library-item-title">${item.name}</div>
-                <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages}</div>
+                <div class="library-item-progress">Page ${item.currentPage || 1} of ${item.totalPages || 1}</div>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${(item.currentPage / item.totalPages * 100)}%"></div>
+                    <div class="progress-fill" style="width: ${(item.currentPage / item.totalPages * 100) || 0}%"></div>
                 </div>
             </div>
             <div class="library-item-right">
-                <button class="book-menu-btn" onclick="toggleBookMenu(event, ${realIndex})">⋮</button>
+                <button class="book-menu-btn" onclick="event.stopPropagation(); toggleBookMenu(event, ${realIndex})">⋮</button>
                 <button class="delete-btn" onclick="event.stopPropagation(); deletePdf(${realIndex})">Delete</button>
                 <div class="book-menu-dropdown">
-                    <div class="book-menu-item" onclick="addBookToFolder(${realIndex})">
+                    <div class="book-menu-item" onclick="event.stopPropagation(); addBookToFolder(${realIndex})">
                         Add to folder
                     </div>
                     <div class="book-menu-item ${canRemoveFromFolder ? '' : 'disabled'}"
-                         onclick="${canRemoveFromFolder ? `removeBookFromCurrentFolder(${realIndex})` : 'event.stopPropagation();'}">
+                         onclick="event.stopPropagation(); ${canRemoveFromFolder ? `removeBookFromCurrentFolder(${realIndex})` : ''}">
                         Remove from this folder
                     </div>
                 </div>
@@ -1191,10 +1320,10 @@ document.addEventListener('fullscreenchange', () => {
     }
 });
 
+// Initialize
 renderFolderSelect();
 renderLibrary();
 updateZoomDisplay();
 </script>
 </body>
 </html>
-
