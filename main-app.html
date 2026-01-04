@@ -1,976 +1,985 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="google-site-verification" content="E7knuFVZA_dGkubXqO4pMzNhFaQk7aSImN985b-rjGs" />
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Continua | PDF Reader Pro</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta name="google-site-verification" content="E7knuFVZA_dGkubXqO4pMzNhFaQk7aSImN985b-rjGs" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Continua | PDF Reader Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 40px);
-        }
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 40px);
+}
 
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-        }
+.header h1 {
+    font-size: 28px;
+    font-weight: 600;
+}
 
-        .header-buttons {
-            display: flex;
-            gap: 10px;
-        }
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
 
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
 
-        .btn-primary {
-            background: white;
-            color: #667eea;
-        }
+.btn-primary {
+    background: white;
+    color: #667eea;
+}
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
 
-        .btn-secondary {
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid white;
-        }
+.btn-secondary {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid white;
+}
 
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.3);
-        }
+.btn-secondary:hover {
+    background: rgba(255,255,255,0.3);
+}
 
-        .main-content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
 
-        .sidebar {
-            width: 300px;
-            background: #f8f9fa;
-            border-right: 1px solid #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+.sidebar {
+    width: 300px;
+    background: #f8f9fa;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
 
-        .sidebar-tabs {
-            display: flex;
-            background: #e9ecef;
-            border-bottom: 1px solid #dee2e6;
-        }
+.sidebar-tabs {
+    display: flex;
+    background: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+}
 
-        .tab {
-            flex: 1;
-            padding: 15px;
-            text-align: center;
-            cursor: pointer;
-            font-weight: 500;
-            color: #6c757d;
-            transition: all 0.3s;
-            border-bottom: 3px solid transparent;
-        }
+.tab {
+    flex: 1;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.3s;
+    border-bottom: 3px solid transparent;
+}
 
-        .tab.active {
-            color: #667eea;
-            background: white;
-            border-bottom-color: #667eea;
-        }
+.tab.active {
+    color: #667eea;
+    background: white;
+    border-bottom-color: #667eea;
+}
 
-        .tab-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-        }
+.tab-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
 
-        .library-item {
-            background: white;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid #e0e0e0;
-            user-select: none;
-            position: relative;
-        }
+.library-item {
+    background: white;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid #e0e0e0;
+    user-select: none;
+    position: relative;
+}
 
-        .library-item:hover {
-            border-color: #667eea;
-            transform: translateX(5px);
-            box-shadow: 0 5px 15px rgba(102,126,234,0.2);
-        }
+.library-item:hover {
+    border-color: #667eea;
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(102,126,234,0.2);
+}
 
-        .library-item.active {
-            border-color: #667eea;
-            background: #f0f4ff;
-        }
+.library-item.active {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
 
-        .library-item.dragging {
-            opacity: 0.6;
-            box-shadow: 0 0 0 2px #764ba2;
-        }
+/* Visual feedback when an item is being dragged or is the drop target */
+.library-item.dragging {
+    opacity: 0.6;
+    box-shadow: 0 0 0 2px #764ba2;
+}
 
-        .library-item.drag-over {
-            border-color: #764ba2;
-            box-shadow: 0 0 0 2px #667eea;
-        }
+.library-item.drag-over {
+    border-color: #764ba2;
+    box-shadow: 0 0 0 2px #667eea;
+}
 
-        .library-item-title {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
+.library-item-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
 
-        .library-item-progress {
-            font-size: 12px;
-            color: #6c757d;
-            margin-bottom: 8px;
-        }
+.library-item-progress {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
 
-        .progress-bar {
-            height: 4px;
-            background: #e0e0e0;
-            border-radius: 2px;
-            overflow: hidden;
-        }
+.progress-bar {
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+}
 
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.3s;
-        }
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s;
+}
 
-        .toc-item {
-            padding: 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin-bottom: 5px;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
+.toc-item {
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    transition: all 0.2s;
+    font-size: 14px;
+}
 
-        .toc-item:hover {
-            background: #e9ecef;
-        }
+.toc-item:hover {
+    background: #e9ecef;
+}
 
-        .viewer-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #525659;
-        }
+.viewer-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #525659;
+}
 
-        .toolbar {
-            background: #2c3034;
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-        }
+.toolbar {
+    background: #2c3034;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
 
-        .toolbar-left, .toolbar-right {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+.toolbar-left, .toolbar-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
 
-        .toolbar-btn {
-            background: #3c4044;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-        }
+.toolbar-btn {
+    background: #3c4044;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
 
-        .toolbar-btn:hover {
-            background: #4c5054;
-        }
+.toolbar-btn:hover {
+    background: #4c5054;
+}
 
-        .toolbar-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+.toolbar-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
-        .page-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+.page-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-        .page-input {
-            width: 60px;
-            padding: 5px;
-            border-radius: 5px;
-            border: 1px solid #5c6064;
-            background: #3c4044;
-            color: white;
-            text-align: center;
-        }
+.page-input {
+    width: 60px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #5c6064;
+    background: #3c4044;
+    color: white;
+    text-align: center;
+}
 
-        .pdf-viewer {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
+.pdf-viewer {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
 
-        .pdf-canvas-container {
-            background: white;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-        }
+.pdf-canvas-container {
+    background: white;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
 
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
 
-        .modal.active {
-            display: flex;
-        }
+.modal.active {
+    display: flex;
+}
 
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        }
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
 
-        .modal-header {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #333;
-        }
+.modal-header {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+}
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+.form-group {
+    margin-bottom: 20px;
+}
 
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
-        }
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+}
 
-        .form-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
+.form-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
 
-        .form-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+.form-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
 
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
 
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #6c757d;
-        }
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
 
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
 
-        .zoom-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+.zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-top: 5px;
-        }
+.delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 5px;
+}
 
-        .delete-btn:hover {
-            background: #c82333;
-        }
+.delete-btn:hover {
+    background: #c82333;
+}
 
-        .library-folder {
-            margin-bottom: 10px;
-        }
+/* Folder UI */
+.folder-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
 
-        .folder-actions {
-            display: flex;
-            gap: 5px;
-            margin: 5px 0 10px 5px;
-        }
+.folder-select {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    font-size: 13px;
+    background: #ffffff;
+}
 
-        .folder-actions .delete-btn {
-            background: #6c757d;
-            font-size: 11px;
-        }
+.folder-pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #e9ecef;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
 
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
+.folder-pill:hover {
+    background: #dee2e6;
+}
 
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
+::-webkit-scrollbar {
+    width: 10px;
+}
 
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 5px;
-        }
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-    </style>
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1> Continua | PDF Reader PRO</h1>
-            <div class="header-buttons">
-                <button class="btn btn-primary" onclick="openAddModal()">+ Add PDF</button>
-                <button class="btn btn-secondary" onclick="toggleSidebar()">☰ Menu</button>
-            </div>
-        </div>
+<div class="container">
+<div class="header">
+<h1> Continua | PDF Reader PRO</h1>
+<div class="header-buttons">
+<button class="btn btn-primary" onclick="openAddModal()">+ Add PDF</button>
+<button class="btn btn-secondary" onclick="toggleSidebar()">☰ Menu</button>
+</div>
+</div>
 
-        <div class="main-content">
-            <div class="sidebar" id="sidebar">
-                <div class="sidebar-tabs">
-                    <div class="tab active" onclick="switchTab('library')">Library</div>
-                    <div class="tab" onclick="switchTab('toc')">Contents</div>
-                </div>
-                <div class="tab-content" id="libraryTab">
-                    <div id="libraryList"></div>
-                </div>
-                <div class="tab-content" id="tocTab" style="display: none;">
-                    <div id="tocList"></div>
-                </div>
-            </div>
-
-            <div class="viewer-container">
-                <div class="toolbar">
-                    <div class="toolbar-left">
-                        <button class="toolbar-btn" onclick="prevPage()" id="prevBtn">← Previous</button>
-                        <div class="page-info">
-                            <input type="number" class="page-input" id="pageInput" value="1" min="1" onchange="goToPage()">
-                            <span>/ <span id="totalPages">0</span></span>
-                        </div>
-                        <button class="toolbar-btn" onclick="nextPage()" id="nextBtn">Next →</button>
-                    </div>
-                    <div class="toolbar-right">
-                        <div class="zoom-control">
-                            <button class="toolbar-btn" onclick="zoomOut()">-</button>
-                            <span id="zoomLevel">100%</span>
-                            <button class="toolbar-btn" onclick="zoomIn()">+</button>
-                        </div>
-                        <button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
-                    </div>
-                </div>
-                <div class="pdf-viewer" id="pdfViewer">
-                    <div class="empty-state">
-                        <div class="empty-state-icon"></div>
-                        <h3>No PDF Loaded</h3>
-                        <p>Click "Add PDF" to load a document from URL</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="main-content">
+<div class="sidebar" id="sidebar">
+<div class="sidebar-tabs">
+<div class="tab active" onclick="switchTab('library')">Library</div>
+<div class="tab" onclick="switchTab('toc')">Contents</div>
+</div>
+<div class="tab-content" id="libraryTab">
+    <!-- Folder bar added here -->
+    <div class="folder-bar">
+        <select id="folderSelect" class="folder-select" onchange="changeFolder()"></select>
+        <button class="folder-pill" onclick="addFolder()">+ Folder</button>
     </div>
+    <div id="libraryList"></div>
+</div>
+<div class="tab-content" id="tocTab" style="display: none;">
+<div id="tocList"></div>
+</div>
+</div>
 
-    <div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
-        <div class="modal-content">
-            <div class="modal-header">
-                Add PDF Document
-                <button style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;" onclick="closeAddModal()">×</button>
+<div class="viewer-container">
+<div class="toolbar">
+<div class="toolbar-left">
+<button class="toolbar-btn" onclick="prevPage()" id="prevBtn">← Previous</button>
+<div class="page-info">
+<input type="number" class="page-input" id="pageInput" value="1" min="1" onchange="goToPage()">
+<span>/ <span id="totalPages">0</span></span>
+</div>
+<button class="toolbar-btn" onclick="nextPage()" id="nextBtn">Next →</button>
+</div>
+<div class="toolbar-right">
+<div class="zoom-control">
+<button class="toolbar-btn" onclick="zoomOut()">-</button>
+<span id="zoomLevel">100%</span>
+<button class="toolbar-btn" onclick="zoomIn()">+</button>
+</div>
+<button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
+</div>
+</div>
+<div class="pdf-viewer" id="pdfViewer">
+<div class="empty-state">
+<div class="empty-state-icon"></div>
+<h3>No PDF Loaded</h3>
+<p>Click "Add PDF" to load a document from URL</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
+<div class="modal-content">
+<div class="modal-header">
+Add PDF Document
+<button style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;" onclick="closeAddModal()">×</button>
+</div>
+<div class="form-group">
+<label class="form-label">Document Name</label>
+<input type="text" class="form-input" id="pdfName" placeholder="Enter document name">
+</div>
+<div class="form-group">
+<label class="form-label">PDF URL</label>
+<input type="text" class="form-input" id="pdfUrl" placeholder="https://example.com/document.pdf">
+</div>
+<div class="modal-buttons">
+<button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+<button class="btn btn-primary" onclick="addPdf()">Add to Library</button>
+</div>
+</div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]');
+let currentPdf = null;
+let currentPage = 1;
+let totalPages = 0;
+let scale = 1.5;
+let pdfDoc = null;
+let currentPdfId = null;
+
+// Folder system
+let folders = JSON.parse(localStorage.getItem('pdfFolders') || '[]');
+let activeFolder = localStorage.getItem('pdfActiveFolder') || 'All';
+
+// Ensure default folder “All”
+if (!folders.length) {
+    folders = ['All'];
+    localStorage.setItem('pdfFolders', JSON.stringify(folders));
+}
+if (!activeFolder) activeFolder = 'All';
+localStorage.setItem('pdfActiveFolder', activeFolder);
+
+// Variables for drag-to-swap
+let dragStartIndex = null;
+let dragCurrentIndex = null;
+let isDraggingLibraryItem = false;
+
+function saveFolders() {
+    localStorage.setItem('pdfFolders', JSON.stringify(folders));
+    localStorage.setItem('pdfActiveFolder', activeFolder);
+}
+
+function renderFolderSelect() {
+    const select = document.getElementById('folderSelect');
+    if (!select) return;
+    if (!folders.includes('All')) folders.unshift('All');
+    select.innerHTML = folders.map(f => `
+        <option value="${f}" ${f === activeFolder ? 'selected' : ''}>${f}</option>
+    `).join('');
+}
+
+function changeFolder() {
+    const select = document.getElementById('folderSelect');
+    activeFolder = select.value;
+    saveFolders();
+    renderLibrary();
+}
+
+function addFolder() {
+    const name = prompt('New folder name:');
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (!folders.includes(trimmed)) {
+        folders.push(trimmed);
+        activeFolder = trimmed;
+        saveFolders();
+        renderFolderSelect();
+        renderLibrary();
+    }
+}
+
+// Update zoom display on load
+function updateZoomDisplay() {
+    document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
+}
+
+function renderLibrary() {
+    const list = document.getElementById('libraryList');
+    if (!list) return;
+
+    // Filter by active folder (except All)
+    const visibleItems = activeFolder === 'All'
+        ? library
+        : library.filter(item => item.folder === activeFolder);
+
+    if (visibleItems.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>No books in this folder</p></div>';
+        return;
+    }
+
+    list.innerHTML = visibleItems.map((item) => {
+        const realIndex = library.findIndex(b => b.id === item.id);
+        return `
+        <div class="library-item ${currentPdfId === item.id ? 'active' : ''}"
+             data-index="${realIndex}">
+            <div onclick="loadPdfFromLibrary(${realIndex})">
+                <div class="library-item-title">${item.name}</div>
+                <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages}</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${(item.currentPage / item.totalPages * 100)}%"></div>
+                </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Document Name</label>
-                <input type="text" class="form-input" id="pdfName" placeholder="Enter document name">
-            </div>
-            <div class="form-group">
-                <label class="form-label">PDF URL</label>
-                <input type="text" class="form-input" id="pdfUrl" placeholder="https://example.com/document.pdf">
-            </div>
-            <div class="modal-buttons">
-                <button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="addPdf()">Add to Library</button>
-            </div>
+            <button class="delete-btn" onclick="event.stopPropagation(); deletePdf(${realIndex})">Delete</button>
         </div>
-    </div>
+        `;
+    }).join('');
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    // Attach drag handlers after rendering
+    attachLibraryDragHandlers();
+}
 
-        // ----- Folder-based library structure -----
-        let library = JSON.parse(localStorage.getItem('pdfLibrary') || 'null');
+// Attach mouse-based drag handlers to library items to support swapping
+function attachLibraryDragHandlers() {
+    const items = document.querySelectorAll('.library-item');
+    items.forEach(item => {
+        item.onmousedown = function(e) {
+            if (e.button !== 0 || e.target.classList.contains('delete-btn')) return;
 
-        if (!library) {
-            library = {
-                folders: [
-                    {
-                        id: 'root',
-                        name: 'All Books',
-                        color: '#667eea',
-                        icon: '📁',
-                        books: [],
-                        subfolders: []
-                    }
-                ],
-                activeFolderId: 'root'
-            };
-            localStorage.setItem('pdfLibrary', JSON.stringify(library));
-        }
+            isDraggingLibraryItem = true;
+            dragStartIndex = parseInt(this.getAttribute('data-index'));
+            dragCurrentIndex = dragStartIndex;
+            this.classList.add('dragging');
 
-        let currentPdf = null;
-        let currentPage = 1;
-        let totalPages = 0;
-        let scale = 1.5;
-        let pdfDoc = null;
-        let currentPdfId = null;
+            const currentItem = this;
 
-        function saveLibrary() {
-            localStorage.setItem('pdfLibrary', JSON.stringify(library));
-        }
-
-        function findFolderById(folderId, folder = library.folders[0]) {
-            if (folder.id === folderId) return folder;
-            for (const sub of folder.subfolders) {
-                const found = findFolderById(folderId, sub);
-                if (found) return found;
-            }
-            return null;
-        }
-
-        function findBookById(bookId, folder = library.folders[0]) {
-            const book = folder.books.find(b => b.id === bookId);
-            if (book) return { book, folder };
-            for (const sub of folder.subfolders) {
-                const found = findBookById(bookId, sub);
-                if (found) return found;
-            }
-            return null;
-        }
-
-        function updateZoomDisplay() {
-            document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
-        }
-
-        function renderLibrary() {
-            const list = document.getElementById('libraryList');
-            const rootFolder = library.folders[0];
-
-            if (!rootFolder || (rootFolder.books.length === 0 && rootFolder.subfolders.length === 0)) {
-                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>Your library is empty</p></div>';
-                return;
-            }
-
-            function renderFolder(folder, level = 0) {
-                const isActiveFolder = library.activeFolderId === folder.id;
-
-                let html = `
-                    <div class="library-folder" data-folder-id="${folder.id}" style="margin-left:${level * 12}px">
-                        <div class="library-item ${isActiveFolder ? 'active' : ''}" onclick="setActiveFolder('${folder.id}')">
-                            <div class="library-item-title">${folder.icon || '📁'} ${folder.name}</div>
-                            <div class="library-item-progress">${folder.books.length} books</div>
-                        </div>
-                        <div class="folder-actions">
-                            <button class="delete-btn" onclick="event.stopPropagation(); renameFolderPrompt('${folder.id}')">Rename</button>
-                            <button class="delete-btn" onclick="event.stopPropagation(); addSubfolderPrompt('${folder.id}')">+ Folder</button>
-                            ${folder.id !== 'root' ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteFolder('${folder.id}')">Delete</button>` : ''}
-                        </div>
-                    </div>
-                `;
-
-                if (isActiveFolder && folder.books.length) {
-                    html += folder.books.map((item) => `
-                        <div class="library-item ${currentPdfId === item.id ? 'active' : ''}"
-                             data-book-id="${item.id}" style="margin-left:${(level + 1) * 12}px"
-                             onclick="loadPdfById('${item.id}')">
-                            <div class="library-item-title">${item.name}</div>
-                            <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages || 0}</div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${item.totalPages ? (item.currentPage / item.totalPages * 100) : 0}%"></div>
-                            </div>
-                            <button class="delete-btn" onclick="event.stopPropagation(); deletePdfById('${item.id}')">Delete</button>
-                        </div>
-                    `).join('');
-                }
-
-                for (const sub of folder.subfolders) {
-                    html += renderFolder(sub, level + 1);
-                }
-
-                return html;
-            }
-
-            list.innerHTML = renderFolder(rootFolder);
-        }
-
-        function setActiveFolder(folderId) {
-            library.activeFolderId = folderId;
-            saveLibrary();
-            renderLibrary();
-        }
-
-        function addSubfolderPrompt(parentId) {
-            const name = prompt('New folder name:');
-            if (!name) return;
-            const parent = findFolderById(parentId);
-            if (!parent) return;
-            parent.subfolders.push({
-                id: 'fld_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-                name,
-                color: '#764ba2',
-                icon: '📂',
-                books: [],
-                subfolders: []
-            });
-            saveLibrary();
-            renderLibrary();
-        }
-
-        function renameFolderPrompt(folderId) {
-            const folder = findFolderById(folderId);
-            if (!folder) return;
-            const name = prompt('Rename folder:', folder.name);
-            if (!name) return;
-            folder.name = name.trim();
-            saveLibrary();
-            renderLibrary();
-        }
-
-        function deleteFolder(folderId) {
-            if (!confirm('Delete this folder and all books inside it?')) return;
-            function removeFolder(targetId, folder = library.folders[0]) {
-                const idx = folder.subfolders.findIndex(f => f.id === targetId);
-                if (idx !== -1) {
-                    folder.subfolders.splice(idx, 1);
-                    return true;
-                }
-                for (const sub of folder.subfolders) {
-                    if (removeFolder(targetId, sub)) return true;
-                }
-                return false;
-            }
-            removeFolder(folderId);
-            if (library.activeFolderId === folderId) {
-                library.activeFolderId = 'root';
-            }
-            saveLibrary();
-            renderLibrary();
-        }
-
-        function openAddModal() {
-            document.getElementById('addModal').classList.add('active');
-            document.getElementById('pdfName').value = '';
-            document.getElementById('pdfUrl').value = '';
-        }
-
-        function closeAddModal() {
-            document.getElementById('addModal').classList.remove('active');
-        }
-
-        async function addPdf() {
-            const name = document.getElementById('pdfName').value.trim();
-            const url = document.getElementById('pdfUrl').value.trim();
-            
-            if (!name || !url) {
-                alert('Please enter both name and URL');
-                return;
-            }
-
-            const addButton = event.target;
-            const originalText = addButton.textContent;
-            addButton.textContent = 'Loading...';
-            addButton.disabled = true;
-
-            try {
-                const proxies = [
-                    url,
-                    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
-                ];
-
-                let pdf = null;
-                let lastError = null;
-
-                for (const proxyUrl of proxies) {
-                    try {
-                        const loadingTask = pdfjsLib.getDocument({
-                            url: proxyUrl,
-                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                            cMapPacked: true,
-                            withCredentials: false
-                        });
-                        
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Loading timeout')), 10000)
-                        );
-                        
-                        pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
-                        break;
-                    } catch (err) {
-                        lastError = err;
-                        continue;
-                    }
-                }
-
-                if (!pdf) {
-                    throw lastError || new Error('All loading methods failed');
-                }
-                
-                const pdfItem = {
-                    id: 'bk_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-                    name: name,
-                    url: url,
-                    currentPage: 1,
-                    totalPages: pdf.numPages,
-                    scale: 1.5,
-                    addedDate: new Date().toISOString()
-                };
-                
-                const activeFolder = findFolderById(library.activeFolderId) || library.folders[0];
-                activeFolder.books.push(pdfItem);
-                saveLibrary();
-                renderLibrary();
-                closeAddModal();
-                await loadPdfById(pdfItem.id);
-            } catch (error) {
-                alert('Failed to load PDF. The URL might be invalid or the PDF might be protected. Error: ' + error.message);
-                console.error(error);
-            } finally {
-                addButton.textContent = originalText;
-                addButton.disabled = false;
-            }
-        }
-
-        function deletePdfById(bookId) {
-            if (confirm('Are you sure you want to delete this PDF from your library?')) {
-                function removeBook(bookId, folder = library.folders[0]) {
-                    const idx = folder.books.findIndex(b => b.id === bookId);
-                    if (idx !== -1) {
-                        folder.books.splice(idx, 1);
-                        return true;
-                    }
-                    for (const sub of folder.subfolders) {
-                        if (removeBook(bookId, sub)) return true;
-                    }
-                    return false;
-                }
-                removeBook(bookId);
-                saveLibrary();
-                renderLibrary();
-                if (!library.folders[0].books.length && !library.folders[0].subfolders.length) {
-                    document.getElementById('pdfViewer').innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">Empty</div>
-                            <h3>No PDF Loaded</h3>
-                            <p>Click "Add PDF" to load a document from URL</p>
-                        </div>
-                    `;
+            function onMouseMove(ev) {
+                if (!isDraggingLibraryItem) return;
+                const el = document.elementFromPoint(ev.clientX, ev.clientY);
+                if (!el) return;
+                const targetItem = el.closest('.library-item');
+                document.querySelectorAll('.library-item.drag-over').forEach(i => i.classList.remove('drag-over'));
+                if (targetItem && targetItem !== currentItem) {
+                    targetItem.classList.add('drag-over');
+                    dragCurrentIndex = parseInt(targetItem.getAttribute('data-index'));
+                } else {
+                    dragCurrentIndex = dragStartIndex;
                 }
             }
-        }
 
-        async function loadPdfById(bookId) {
-            const found = findBookById(bookId);
-            if (!found) return;
-            const item = found.book;
-            currentPdfId = item.id;
-            
-            const viewer = document.getElementById('pdfViewer');
-            viewer.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><h3>Loading PDF...</h3></div>';
-            
-            try {
-                const proxies = [
-                    item.url,
-                    `https://corsproxy.io/?${encodeURIComponent(item.url)}`,
-                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(item.url)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`
-                ];
+            function onMouseUp(ev) {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
 
-                let pdf = null;
-                let lastError = null;
+                if (!isDraggingLibraryItem) return;
+                isDraggingLibraryItem = false;
 
-                for (const proxyUrl of proxies) {
-                    try {
-                        const loadingTask = pdfjsLib.getDocument({
-                            url: proxyUrl,
-                            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-                            cMapPacked: true,
-                            withCredentials: false
-                        });
-                        
-                        const timeoutPromise = new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('Loading timeout')), 10000)
-                        );
-                        
-                        pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
-                        break;
-                    } catch (err) {
-                        lastError = err;
-                        continue;
-                    }
-                }
+                currentItem.classList.remove('dragging');
+                document.querySelectorAll('.library-item.drag-over').forEach(i => i.classList.remove('drag-over'));
 
-                if (!pdf) {
-                    throw lastError || new Error('Failed to load PDF from all sources');
-                }
-
-                pdfDoc = pdf;
-                totalPages = pdfDoc.numPages;
-                currentPage = item.currentPage || 1;
-                scale = item.scale || 1.5;
-                
-                document.getElementById('totalPages').textContent = totalPages;
-                document.getElementById('pageInput').max = totalPages;
-                updateZoomDisplay();
-                
-                await renderPage(currentPage);
-                await loadTableOfContents();
-                renderLibrary();
-                updateProgress();
-            } catch (error) {
-                viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">Error</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
-                console.error(error);
-            }
-        }
-
-        async function renderPage(pageNum) {
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: scale });
-            
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
-            
-            await page.render(renderContext).promise;
-            
-            const viewer = document.getElementById('pdfViewer');
-            viewer.innerHTML = '';
-            const container = document.createElement('div');
-            container.className = 'pdf-canvas-container';
-            container.appendChild(canvas);
-            viewer.appendChild(container);
-            
-            document.getElementById('pageInput').value = pageNum;
-            currentPage = pageNum;
-            
-            updateProgress();
-        }
-
-        function updateProgress() {
-            if (currentPdfId) {
-                const found = findBookById(currentPdfId);
-                if (found) {
-                    found.book.currentPage = currentPage;
-                    found.book.scale = scale;
-                    saveLibrary();
+                if (dragCurrentIndex !== null && dragStartIndex !== null && dragCurrentIndex !== dragStartIndex) {
+                    const temp = library[dragStartIndex];
+                    library[dragStartIndex] = library[dragCurrentIndex];
+                    library[dragCurrentIndex] = temp;
+                    localStorage.setItem('pdfLibrary', JSON.stringify(library));
                     renderLibrary();
                 }
-            }
-        }
 
-        async function loadTableOfContents() {
-            const outline = await pdfDoc.getOutline();
-            const tocList = document.getElementById('tocList');
-            
-            if (!outline || outline.length === 0) {
-                tocList.innerHTML = '<div class="empty-state"><p>No table of contents available</p></div>';
-                return;
+                dragStartIndex = null;
+                dragCurrentIndex = null;
             }
-            
-            function renderOutline(items, level = 0) {
-                return items.map(item => {
-                    return `
-                        <div class="toc-item" style="padding-left: ${level * 20 + 10}px" onclick="goToTocPage('${item.dest}')">
-                            ${item.title}
-                        </div>
-                        ${item.items ? renderOutline(item.items, level + 1) : ''}
-                    `;
-                }).join('');
-            }
-            
-            tocList.innerHTML = renderOutline(outline);
-        }
 
-        async function goToTocPage(dest) {
-            if (!dest) return;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        };
+    });
+}
+
+function openAddModal() {
+    document.getElementById('addModal').classList.add('active');
+    document.getElementById('pdfName').value = '';
+    document.getElementById('pdfUrl').value = '';
+}
+
+function closeAddModal() {
+    document.getElementById('addModal').classList.remove('active');
+}
+
+async function addPdf() {
+    const name = document.getElementById('pdfName').value.trim();
+    const url = document.getElementById('pdfUrl').value.trim();
+
+    if (!name || !url) {
+        alert('Please enter both name and URL');
+        return;
+    }
+
+    const addButton = event.target;
+    const originalText = addButton.textContent;
+    addButton.textContent = 'Loading...';
+    addButton.disabled = true;
+
+    try {
+        const proxies = [
+            url,
+            `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+        ];
+
+        let pdf = null;
+        let lastError = null;
+
+        for (const proxyUrl of proxies) {
             try {
-                const destArray = await pdfDoc.getDestination(dest);
-                if (destArray) {
-                    const pageIndex = await pdfDoc.getPageIndex(destArray[0]);
-                    await renderPage(pageIndex + 1);
-                }
-            } catch (error) {
-                console.error('Error navigating to TOC item:', error);
-            }
-        }
-
-        async function nextPage() {
-            if (currentPage < totalPages) {
-                await renderPage(currentPage + 1);
-            }
-        }
-
-        async function prevPage() {
-            if (currentPage > 1) {
-                await renderPage(currentPage - 1);
-            }
-        }
-
-        async function goToPage() {
-            const pageNum = parseInt(document.getElementById('pageInput').value);
-            if (pageNum >= 1 && pageNum <= totalPages) {
-                await renderPage(pageNum);
-            }
-        }
-
-        async function zoomIn() {
-            scale += 0.25;
-            updateZoomDisplay();
-            if (pdfDoc) {
-                await renderPage(currentPage);
-                updateProgress();
-            }
-        }
-
-        async function zoomOut() {
-            if (scale > 0.5) {
-                scale -= 0.25;
-                updateZoomDisplay();
-                if (pdfDoc) {
-                    await renderPage(currentPage);
-                    updateProgress();
-                }
-            }
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-            
-            if (tab === 'library') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('libraryTab').style.display = 'block';
-            } else {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('tocTab').style.display = 'block';
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none';
-        }
-
-        function toggleFullscreen() {
-            const container = document.querySelector('.container');
-            const btn = document.getElementById('fullscreenBtn');
-            
-            if (!document.fullscreenElement) {
-                container.requestFullscreen().then(() => {
-                    btn.textContent = '⛶ Exit Fullscreen';
-                }).catch(err => {
-                    alert('Error attempting to enable fullscreen: ' + err.message);
+                const loadingTask = pdfjsLib.getDocument({
+                    url: proxyUrl,
+                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true,
+                    withCredentials: false
                 });
-            } else {
-                document.exitFullscreen().then(() => {
-                    btn.textContent = '⛶ Fullscreen';
-                });
+
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Loading timeout')), 10000)
+                );
+
+                pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
+                break;
+            } catch (err) {
+                lastError = err;
+                console.warn(`Failed with proxy: ${proxyUrl}`, err);
+                continue;
             }
         }
 
-        document.addEventListener('fullscreenchange', () => {
-            const btn = document.getElementById('fullscreenBtn');
-            if (!document.fullscreenElement) {
-                btn.textContent = '⛶ Fullscreen';
-            }
-        });
+        if (!pdf) {
+            throw lastError || new Error('All loading methods failed');
+        }
 
+        const pdfItem = {
+            id: Date.now(),
+            name: name,
+            url: url,
+            currentPage: 1,
+            totalPages: pdf.numPages,
+            scale: 1.5,
+            folder: activeFolder || 'All',
+            addedDate: new Date().toISOString()
+        };
+
+        library.push(pdfItem);
+        localStorage.setItem('pdfLibrary', JSON.stringify(library));
         renderLibrary();
+        closeAddModal();
+        await loadPdfFromLibrary(library.length - 1);
+    } catch (error) {
+        alert('Failed to load PDF. The URL might be invalid or the PDF might be protected. Error: ' + error.message);
+        console.error(error);
+    } finally {
+        addButton.textContent = originalText;
+        addButton.disabled = false;
+    }
+}
+
+function deletePdf(index) {
+    if (confirm('Are you sure you want to delete this PDF from your library?')) {
+        library.splice(index, 1);
+        localStorage.setItem('pdfLibrary', JSON.stringify(library));
+        renderLibrary();
+        if (library.length === 0) {
+            document.getElementById('pdfViewer').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">Empty</div>
+                    <h3>No PDF Loaded</h3>
+                    <p>Click "Add PDF" to load a document from URL</p>
+                </div>
+            `;
+        }
+    }
+}
+
+async function loadPdfFromLibrary(index) {
+    const item = library[index];
+    currentPdfId = item.id;
+
+    const viewer = document.getElementById('pdfViewer');
+    viewer.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><h3>Loading PDF...</h3></div>';
+
+    try {
+        const proxies = [
+            item.url,
+            `https://corsproxy.io/?${encodeURIComponent(item.url)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(item.url)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(item.url)}`
+        ];
+
+        let pdf = null;
+        let lastError = null;
+
+        for (const proxyUrl of proxies) {
+            try {
+                const loadingTask = pdfjsLib.getDocument({
+                    url: proxyUrl,
+                    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                    cMapPacked: true,
+                    withCredentials: false
+                });
+
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Loading timeout')), 10000)
+                );
+
+                pdf = await Promise.race([loadingTask.promise, timeoutPromise]);
+                break;
+            } catch (err) {
+                lastError = err;
+                console.warn(`Failed to load with: ${proxyUrl}`, err);
+                continue;
+            }
+        }
+
+        if (!pdf) {
+            throw lastError || new Error('Failed to load PDF from all sources');
+        }
+
+        pdfDoc = pdf;
+        totalPages = pdfDoc.numPages;
+        currentPage = item.currentPage;
+        scale = item.scale || 1.5;
+
+        document.getElementById('totalPages').textContent = totalPages;
+        document.getElementById('pageInput').max = totalPages;
         updateZoomDisplay();
-    </script>
+
+        await renderPage(currentPage);
+        await loadTableOfContents();
+        renderLibrary();
+        updateProgress();
+    } catch (error) {
+        viewer.innerHTML = `<div class="empty-state"><div class="empty-state-icon">Error</div><h3>Failed to Load PDF</h3><p>${error.message}</p></div>`;
+        console.error(error);
+    }
+}
+
+async function renderPage(pageNum) {
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: scale });
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+    };
+
+    await page.render(renderContext).promise;
+
+    const viewer = document.getElementById('pdfViewer');
+    viewer.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'pdf-canvas-container';
+    container.appendChild(canvas);
+    viewer.appendChild(container);
+
+    document.getElementById('pageInput').value = pageNum;
+    currentPage = pageNum;
+
+    updateProgress();
+}
+
+function updateProgress() {
+    if (currentPdfId) {
+        const index = library.findIndex(item => item.id === currentPdfId);
+        if (index !== -1) {
+            library[index].currentPage = currentPage;
+            library[index].scale = scale;
+            localStorage.setItem('pdfLibrary', JSON.stringify(library));
+            renderLibrary();
+        }
+    }
+}
+
+async function loadTableOfContents() {
+    const outline = await pdfDoc.getOutline();
+    const tocList = document.getElementById('tocList');
+
+    if (!outline || outline.length === 0) {
+        tocList.innerHTML = '<div class="empty-state"><p>No table of contents available</p></div>';
+        return;
+    }
+
+    function renderOutline(items, level = 0) {
+        return items.map(item => {
+            return `
+                <div class="toc-item" style="padding-left: ${level * 20 + 10}px" onclick="goToTocPage('${item.dest}')">
+                    ${item.title}
+                </div>
+                ${item.items ? renderOutline(item.items, level + 1) : ''}
+            `;
+        }).join('');
+    }
+
+    tocList.innerHTML = renderOutline(outline);
+}
+
+async function goToTocPage(dest) {
+    if (!dest) return;
+    try {
+        const destArray = await pdfDoc.getDestination(dest);
+        if (destArray) {
+            const pageIndex = await pdfDoc.getPageIndex(destArray[0]);
+            await renderPage(pageIndex + 1);
+        }
+    } catch (error) {
+        console.error('Error navigating to TOC item:', error);
+    }
+}
+
+async function nextPage() {
+    if (currentPage < totalPages) {
+        await renderPage(currentPage + 1);
+    }
+}
+
+async function prevPage() {
+    if (currentPage > 1) {
+        await renderPage(currentPage - 1);
+    }
+}
+
+async function goToPage() {
+    const pageNum = parseInt(document.getElementById('pageInput').value);
+    if (pageNum >= 1 && pageNum <= totalPages) {
+        await renderPage(pageNum);
+    }
+}
+
+async function zoomIn() {
+    scale += 0.25;
+    updateZoomDisplay();
+    if (pdfDoc) {
+        await renderPage(currentPage);
+        updateProgress();
+    }
+}
+
+async function zoomOut() {
+    if (scale > 0.5) {
+        scale -= 0.25;
+        updateZoomDisplay();
+        if (pdfDoc) {
+            await renderPage(currentPage);
+            updateProgress();
+        }
+    }
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+
+    if (tab === 'library') {
+        document.querySelectorAll('.tab')[0].classList.add('active');
+        document.getElementById('libraryTab').style.display = 'block';
+    } else {
+        document.querySelectorAll('.tab')[1].classList.add('active');
+        document.getElementById('tocTab').style.display = 'block';
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.style.display = sidebar.style.display === 'none' ? 'flex' : 'none';
+}
+
+function toggleFullscreen() {
+    const container = document.querySelector('.container');
+    const btn = document.getElementById('fullscreenBtn');
+
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().then(() => {
+            btn.textContent = '⛶ Exit Fullscreen';
+        }).catch(err => {
+            alert('Error attempting to enable fullscreen: ' + err.message);
+        });
+    } else {
+        document.exitFullscreen().then(() => {
+            btn.textContent = '⛶ Fullscreen';
+        });
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    const btn = document.getElementById('fullscreenBtn');
+    if (!document.fullscreenElement) {
+        btn.textContent = '⛶ Fullscreen';
+    }
+});
+
+// Initialize
+renderFolderSelect();
+renderLibrary();
+updateZoomDisplay();
+</script>
 </body>
 </html>
