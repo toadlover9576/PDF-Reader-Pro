@@ -395,6 +395,11 @@ body {
     background: #dee2e6;
 }
 
+.folder-pill.drag-over {
+    background: #d0d7ff;
+    border: 1px solid #667eea;
+}
+
 #folderPalette {
     display: flex;
     flex-wrap: wrap;
@@ -438,82 +443,82 @@ body {
 <body>
 <div class="container">
 <div class="header">
-    <h1> Continua | PDF Reader PRO</h1>
-    <div class="header-buttons">
-        <button class="btn btn-primary" onclick="openAddModal()">+ Add PDF</button>
-        <button class="btn btn-secondary" onclick="toggleSidebar()">☰ Menu</button>
-    </div>
+<h1> Continua | PDF Reader PRO</h1>
+<div class="header-buttons">
+<button class="btn btn-primary" onclick="openAddModal()">+ Add PDF</button>
+<button class="btn btn-secondary" onclick="toggleSidebar()">☰ Menu</button>
+</div>
 </div>
 
 <div class="main-content">
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-tabs">
-            <div class="tab active" onclick="switchTab('library')">Library</div>
-            <div class="tab" onclick="switchTab('toc')">Contents</div>
-        </div>
-        <div class="tab-content" id="libraryTab">
-            <div class="folder-bar">
-                <select id="folderSelect" class="folder-select" onchange="changeFolder()"></select>
-                <button class="folder-pill" onclick="addFolder()">+F</button>
-                <button class="folder-pill" onclick="renameFolder()">✎</button>
-                <button class="folder-pill" onclick="deleteFolder()">🗑</button>
-            </div>
-            <div id="folderPalette"></div>
-            <div id="libraryList"></div>
-        </div>
-        <div class="tab-content" id="tocTab" style="display: none;">
-            <div id="tocList"></div>
-        </div>
+<div class="sidebar" id="sidebar">
+<div class="sidebar-tabs">
+<div class="tab active" onclick="switchTab('library')">Library</div>
+<div class="tab" onclick="switchTab('toc')">Contents</div>
+</div>
+<div class="tab-content" id="libraryTab">
+    <div class="folder-bar">
+        <select id="folderSelect" class="folder-select" onchange="changeFolder()"></select>
+        <button class="folder-pill" onclick="addFolder()">+F</button>
+        <button class="folder-pill" onclick="renameFolder()">✎</button>
+        <button class="folder-pill" onclick="deleteFolder()">🗑</button>
     </div>
+    <div id="folderPalette"></div>
+    <div id="libraryList"></div>
+</div>
+<div class="tab-content" id="tocTab" style="display: none;">
+<div id="tocList"></div>
+</div>
+</div>
 
-    <div class="viewer-container">
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <button class="toolbar-btn" onclick="prevPage()" id="prevBtn">← Previous</button>
-                <div class="page-info">
-                    <input type="number" class="page-input" id="pageInput" value="1" min="1" onchange="goToPage()">
-                    <span>/ <span id="totalPages">0</span></span>
-                </div>
-                <button class="toolbar-btn" onclick="nextPage()" id="nextBtn">Next →</button>
-            </div>
-            <div class="toolbar-right">
-                <div class="zoom-control">
-                    <button class="toolbar-btn" onclick="zoomOut()">-</button>
-                    <span id="zoomLevel">100%</span>
-                    <button class="toolbar-btn" onclick="zoomIn()">+</button>
-                </div>
-                <button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
-            </div>
-        </div>
-        <div class="pdf-viewer" id="pdfViewer">
-            <div class="empty-state">
-                <div class="empty-state-icon"></div>
-                <h3>No PDF Loaded</h3>
-                <p>Click "Add PDF" to load a document from URL</p>
-            </div>
-        </div>
-    </div>
+<div class="viewer-container">
+<div class="toolbar">
+<div class="toolbar-left">
+<button class="toolbar-btn" onclick="prevPage()" id="prevBtn">← Previous</button>
+<div class="page-info">
+<input type="number" class="page-input" id="pageInput" value="1" min="1" onchange="goToPage()">
+<span>/ <span id="totalPages">0</span></span>
+</div>
+<button class="toolbar-btn" onclick="nextPage()" id="nextBtn">Next →</button>
+</div>
+<div class="toolbar-right">
+<div class="zoom-control">
+<button class="toolbar-btn" onclick="zoomOut()">-</button>
+<span id="zoomLevel">100%</span>
+<button class="toolbar-btn" onclick="zoomIn()">+</button>
+</div>
+<button class="toolbar-btn" onclick="toggleFullscreen()" id="fullscreenBtn">⛶ Fullscreen</button>
+</div>
+</div>
+<div class="pdf-viewer" id="pdfViewer">
+<div class="empty-state">
+<div class="empty-state-icon"></div>
+<h3>No PDF Loaded</h3>
+<p>Click "Add PDF" to load a document from URL</p>
+</div>
+</div>
+</div>
 </div>
 </div>
 
 <div class="modal" id="addModal" onclick="if(event.target === this) closeAddModal()">
 <div class="modal-content">
-    <div class="modal-header">
-        Add PDF Document
-        <button style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;" onclick="closeAddModal()">×</button>
-    </div>
-    <div class="form-group">
-        <label class="form-label">Document Name</label>
-        <input type="text" class="form-input" id="pdfName" placeholder="Enter document name">
-    </div>
-    <div class="form-group">
-        <label class="form-label">PDF URL</label>
-        <input type="text" class="form-input" id="pdfUrl" placeholder="https://example.com/document.pdf">
-    </div>
-    <div class="modal-buttons">
-        <button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="addPdf()">Add to Library</button>
-    </div>
+<div class="modal-header">
+Add PDF Document
+<button style="float: right; background: none; border: none; font-size: 24px; cursor: pointer; color: #999;" onclick="closeAddModal()">×</button>
+</div>
+<div class="form-group">
+<label class="form-label">Document Name</label>
+<input type="text" class="form-input" id="pdfName" placeholder="Enter document name">
+</div>
+<div class="form-group">
+<label class="form-label">PDF URL</label>
+<input type="text" class="form-input" id="pdfUrl" placeholder="https://example.com/document.pdf">
+</div>
+<div class="modal-buttons">
+<button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+<button class="btn btn-primary" onclick="addPdf()">Add to Library</button>
+</div>
 </div>
 </div>
 
@@ -554,10 +559,9 @@ if (!folders.length) {
 }
 if (!activeFolder) activeFolder = 'All';
 
-// normalize existing books to have folders array
+// normalize existing books: use folders array (tag-like)
 library.forEach(b => {
     if (!Array.isArray(b.folders)) {
-        // if an old single folder field exists, seed from it, else All
         if (b.folder) {
             b.folders = [b.folder];
             delete b.folder;
@@ -565,7 +569,9 @@ library.forEach(b => {
             b.folders = ['All'];
         }
     }
-    if (!b.folders.length) b.folders.push('All');
+    if (!b.folders.includes('All')) {
+        b.folders.push('All');
+    }
 });
 
 localStorage.setItem('pdfLibrary', JSON.stringify(library));
@@ -610,6 +616,8 @@ function renderFolderSelect() {
             <div class="folder-pill"
                  data-folder="${f.name}"
                  ondragover="folderDragOver(event)"
+                 ondragenter="folderDragEnter(event)"
+                 ondragleave="folderDragLeave(event)"
                  ondrop="folderDrop(event)">
                 ${f.icon || '📁'} ${f.name}
             </div>
@@ -691,29 +699,60 @@ function deleteFolder() {
     renderLibrary();
 }
 
-// drag over folder pill
+// folder drag handlers
 function folderDragOver(e) {
     e.preventDefault();
+    if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'move';
+    }
+}
+
+function folderDragEnter(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+}
+
+function folderDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
 }
 
 function folderDrop(e) {
     e.preventDefault();
-    const folderName = e.currentTarget.getAttribute('data-folder');
-    if (!folderName || draggedBookId == null) return;
+    const pill = e.currentTarget;
+    pill.classList.remove('drag-over');
 
-    const book = library.find(b => String(b.id) === String(draggedBookId));
+    const folderName = pill.getAttribute('data-folder');
+    if (!folderName) return;
+
+    let bookId = draggedBookId;
+    if (!bookId && e.dataTransfer) {
+        bookId = e.dataTransfer.getData('text/plain');
+    }
+    if (!bookId) return;
+
+    const book = library.find(b => String(b.id) === String(bookId));
     if (!book) return;
+
+    if (!Array.isArray(book.folders)) {
+        if (book.folder) {
+            book.folders = [book.folder];
+            delete book.folder;
+        } else {
+            book.folders = ['All'];
+        }
+    }
 
     if (!book.folders.includes(folderName)) {
         book.folders.push(folderName);
     }
-    // Always ensure All is present so All view contains everything
     if (!book.folders.includes('All')) {
         book.folders.push('All');
     }
 
     localStorage.setItem('pdfLibrary', JSON.stringify(library));
     renderLibrary();
+
+    alert(`"${book.name}" added to "${folderName}"`);
 }
 
 // Update zoom display on load
@@ -729,7 +768,9 @@ function renderLibrary() {
     if (activeFolder === 'All') {
         visibleItems = library;
     } else {
-        visibleItems = library.filter(item => item.folders && item.folders.includes(activeFolder));
+        visibleItems = library.filter(item =>
+            Array.isArray(item.folders) && item.folders.includes(activeFolder)
+        );
     }
 
     if (visibleItems.length === 0) {
@@ -770,8 +811,15 @@ function renderLibrary() {
 
 function bookDragStart(e) {
     const itemDiv = e.currentTarget;
-    draggedBookId = itemDiv.getAttribute('data-id');
+    const id = itemDiv.getAttribute('data-id');
+
+    draggedBookId = id;
     itemDiv.classList.add('dragging');
+
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', id);
+    }
 }
 
 function bookDragEnd(e) {
@@ -784,6 +832,8 @@ function bookDragEnd(e) {
 function removeFromFolder(index) {
     const book = library[index];
     if (!book || activeFolder === 'All') return;
+    if (!Array.isArray(book.folders)) return;
+
     book.folders = book.folders.filter(fn => fn !== activeFolder);
     if (!book.folders.includes('All')) {
         book.folders.push('All');
@@ -792,12 +842,14 @@ function removeFromFolder(index) {
     renderLibrary();
 }
 
-// Attach mouse-based drag handlers to library items to support swapping within visible list
+// Attach mouse-based drag handlers to support reordering
 function attachLibraryDragHandlers() {
     const items = document.querySelectorAll('.library-item');
     items.forEach(item => {
         item.onmousedown = function(e) {
-            if (e.button !== 0 || e.target.classList.contains('delete-btn') || e.target.classList.contains('remove-folder-btn')) return;
+            if (e.button !== 0 ||
+                e.target.classList.contains('delete-btn') ||
+                e.target.classList.contains('remove-folder-btn')) return;
 
             isDraggingLibraryItem = true;
             dragStartIndex = parseInt(this.getAttribute('data-index'));
@@ -920,7 +972,6 @@ async function addPdf() {
             addedDate: new Date().toISOString()
         };
 
-        // Always ensure All is present
         if (!pdfItem.folders.includes('All')) pdfItem.folders.push('All');
 
         library.push(pdfItem);
