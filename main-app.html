@@ -213,7 +213,7 @@ body {
     border: 1px solid #dee2e6;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    min-width: 160px;
+    min-width: 180px;
     z-index: 100;
     display: none;
 }
@@ -231,6 +231,13 @@ body {
 .book-menu-item:hover {
     background: #f1f3f5;
 }
+
+.book-menu-item.disabled {
+    color: #adb5bd;
+    cursor: default;
+}
+
+/* TOC items */
 
 .toc-item {
     padding: 10px;
@@ -412,30 +419,34 @@ body {
     background: #c82333;
 }
 
-/* Folder UI */
+/* Folder UI: wrap to avoid horizontal scroll */
 .folder-bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 8px;
 }
 
 .folder-select {
-    flex: 1;
-    padding: 6px 10px;
+    flex: 1 1 120px;
+    min-width: 120px;
+    padding: 6px 8px;
     border-radius: 8px;
     border: 1px solid #ced4da;
-    font-size: 13px;
+    font-size: 12px;
     background: #ffffff;
 }
 
 .folder-pill {
-    padding: 6px 10px;
+    flex: 0 0 auto;
+    padding: 4px 8px;
     border-radius: 999px;
     background: #e9ecef;
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .folder-pill:hover {
@@ -445,7 +456,7 @@ body {
 #folderPalette {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     margin-bottom: 10px;
 }
 
@@ -634,8 +645,7 @@ function renderFolderSelect() {
 
     if (palette) {
         palette.innerHTML = folders.map(f => `
-            <div class="folder-pill"
-                 data-folder="${f.name}">
+            <div class="folder-pill" data-folder="${f.name}">
                 ${f.icon || '📁'} ${f.name}
             </div>
         `).join('');
@@ -716,12 +726,7 @@ function deleteFolder() {
     renderLibrary();
 }
 
-// Update zoom display on load
-function updateZoomDisplay() {
-    document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
-}
-
-// 3-dot menu: open/close
+// 3-dot menu open/close
 function toggleBookMenu(event, index) {
     event.stopPropagation();
     closeAllBookMenus();
@@ -736,12 +741,11 @@ function closeAllBookMenus() {
     document.querySelectorAll('.book-menu-dropdown.open').forEach(m => m.classList.remove('open'));
 }
 
-// Add to folder via menu
+// Add book to folder
 function addBookToFolder(index) {
     const book = library[index];
     if (!book) return;
 
-    // list available folders (except All, but you can include it if you want)
     const folderNames = folders.map(f => f.name);
     const input = prompt(
         `Add "${book.name}" to which folder?\n\nExisting folders:\n- ` +
@@ -757,7 +761,6 @@ function addBookToFolder(index) {
         return;
     }
 
-    // if folder doesn't exist, create it
     let folder = folders.find(f => f.name === trimmed);
     if (!folder) {
         folder = {
@@ -787,6 +790,37 @@ function addBookToFolder(index) {
     alert(`"${book.name}" added to folder "${trimmed}".`);
 }
 
+// Remove book from current folder (not All)
+function removeBookFromCurrentFolder(index) {
+    if (activeFolder === 'All') {
+        // do nothing; cannot remove from All
+        closeAllBookMenus();
+        return;
+    }
+    const book = library[index];
+    if (!book || !Array.isArray(book.folders)) {
+        closeAllBookMenus();
+        return;
+    }
+    if (!book.folders.includes(activeFolder)) {
+        closeAllBookMenus();
+        return;
+    }
+
+    book.folders = book.folders.filter(fn => fn !== activeFolder);
+    if (!book.folders.length) {
+        book.folders.push('All');
+    }
+    if (!book.folders.includes('All')) {
+        book.folders.push('All');
+    }
+
+    localStorage.setItem('pdfLibrary', JSON.stringify(library));
+    renderLibrary();
+    closeAllBookMenus();
+    alert(`"${book.name}" removed from folder "${activeFolder}".`);
+}
+
 // click anywhere to close menus
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.library-item-right')) {
@@ -814,6 +848,9 @@ function renderLibrary() {
 
     list.innerHTML = visibleItems.map((item) => {
         const realIndex = library.findIndex(b => b.id === item.id);
+        const canRemoveFromFolder = activeFolder !== 'All' &&
+            Array.isArray(item.folders) &&
+            item.folders.includes(activeFolder);
         return `
         <div class="library-item ${currentPdfId === item.id ? 'active' : ''}"
              data-index="${realIndex}">
@@ -830,6 +867,10 @@ function renderLibrary() {
                 <div class="book-menu-dropdown">
                     <div class="book-menu-item" onclick="addBookToFolder(${realIndex})">
                         Add to folder
+                    </div>
+                    <div class="book-menu-item ${canRemoveFromFolder ? '' : 'disabled'}"
+                         onclick="${canRemoveFromFolder ? `removeBookFromCurrentFolder(${realIndex})` : 'event.stopPropagation();'}">
+                        Remove from this folder
                     </div>
                 </div>
             </div>
