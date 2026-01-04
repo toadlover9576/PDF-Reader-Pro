@@ -125,9 +125,11 @@ body {
     padding: 20px;
 }
 
+/* Library items */
+
 .library-item {
     background: white;
-    padding: 15px;
+    padding: 12px 10px;
     margin-bottom: 10px;
     border-radius: 10px;
     cursor: pointer;
@@ -135,6 +137,8 @@ body {
     border: 2px solid #e0e0e0;
     user-select: none;
     position: relative;
+    display: flex;
+    gap: 8px;
 }
 
 .library-item:hover {
@@ -148,15 +152,8 @@ body {
     background: #f0f4ff;
 }
 
-/* Visual feedback when an item is being dragged or is the drop target */
-.library-item.dragging {
-    opacity: 0.6;
-    box-shadow: 0 0 0 2px #764ba2;
-}
-
-.library-item.drag-over {
-    border-color: #764ba2;
-    box-shadow: 0 0 0 2px #667eea;
+.library-item-main {
+    flex: 1;
 }
 
 .library-item-title {
@@ -183,6 +180,56 @@ body {
     height: 100%;
     background: linear-gradient(90deg, #667eea, #764ba2);
     transition: width 0.3s;
+}
+
+/* Right side controls on each book */
+.library-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+/* 3-dot menu button */
+.book-menu-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 4px;
+}
+
+.book-menu-btn:hover {
+    color: #667eea;
+}
+
+/* dropdown */
+.book-menu-dropdown {
+    position: absolute;
+    right: 10px;
+    top: 30px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 160px;
+    z-index: 100;
+    display: none;
+}
+
+.book-menu-dropdown.open {
+    display: block;
+}
+
+.book-menu-item {
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.book-menu-item:hover {
+    background: #f1f3f5;
 }
 
 .toc-item {
@@ -395,31 +442,11 @@ body {
     background: #dee2e6;
 }
 
-.folder-pill.drag-over {
-    background: #d0d7ff;
-    border: 1px solid #667eea;
-}
-
 #folderPalette {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 10px;
-}
-
-.remove-folder-btn {
-    background: #ffc107;
-    color: #212529;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 11px;
-    margin-left: 5px;
-}
-
-.remove-folder-btn:hover {
-    background: #e0a800;
 }
 
 ::-webkit-scrollbar {
@@ -559,7 +586,7 @@ if (!folders.length) {
 }
 if (!activeFolder) activeFolder = 'All';
 
-// normalize existing books: use folders array (tag-like)
+// normalize existing books to have folders array
 library.forEach(b => {
     if (!Array.isArray(b.folders)) {
         if (b.folder) {
@@ -577,12 +604,6 @@ library.forEach(b => {
 localStorage.setItem('pdfLibrary', JSON.stringify(library));
 localStorage.setItem('pdfFolders', JSON.stringify(folders));
 localStorage.setItem('pdfActiveFolder', activeFolder);
-
-// drag state
-let dragStartIndex = null;
-let dragCurrentIndex = null;
-let isDraggingLibraryItem = false;
-let draggedBookId = null;
 
 function saveFolders() {
     localStorage.setItem('pdfFolders', JSON.stringify(folders));
@@ -614,11 +635,7 @@ function renderFolderSelect() {
     if (palette) {
         palette.innerHTML = folders.map(f => `
             <div class="folder-pill"
-                 data-folder="${f.name}"
-                 ondragover="folderDragOver(event)"
-                 ondragenter="folderDragEnter(event)"
-                 ondragleave="folderDragLeave(event)"
-                 ondrop="folderDrop(event)">
+                 data-folder="${f.name}">
                 ${f.icon || '📁'} ${f.name}
             </div>
         `).join('');
@@ -699,51 +716,66 @@ function deleteFolder() {
     renderLibrary();
 }
 
-// folder drag handlers
-function folderDragOver(e) {
-    e.preventDefault();
-    if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'move';
-    }
+// Update zoom display on load
+function updateZoomDisplay() {
+    document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
 }
 
-function folderDragEnter(e) {
-    e.preventDefault();
-    e.currentTarget.classList.add('drag-over');
+// 3-dot menu: open/close
+function toggleBookMenu(event, index) {
+    event.stopPropagation();
+    closeAllBookMenus();
+    const item = document.querySelector(`.library-item[data-index="${index}"]`);
+    if (!item) return;
+    const menu = item.querySelector('.book-menu-dropdown');
+    if (!menu) return;
+    menu.classList.toggle('open');
 }
 
-function folderDragLeave(e) {
-    e.currentTarget.classList.remove('drag-over');
+function closeAllBookMenus() {
+    document.querySelectorAll('.book-menu-dropdown.open').forEach(m => m.classList.remove('open'));
 }
 
-function folderDrop(e) {
-    e.preventDefault();
-    const pill = e.currentTarget;
-    pill.classList.remove('drag-over');
-
-    const folderName = pill.getAttribute('data-folder');
-    if (!folderName) return;
-
-    let bookId = draggedBookId;
-    if (!bookId && e.dataTransfer) {
-        bookId = e.dataTransfer.getData('text/plain');
-    }
-    if (!bookId) return;
-
-    const book = library.find(b => String(b.id) === String(bookId));
+// Add to folder via menu
+function addBookToFolder(index) {
+    const book = library[index];
     if (!book) return;
 
-    if (!Array.isArray(book.folders)) {
-        if (book.folder) {
-            book.folders = [book.folder];
-            delete book.folder;
-        } else {
-            book.folders = ['All'];
-        }
+    // list available folders (except All, but you can include it if you want)
+    const folderNames = folders.map(f => f.name);
+    const input = prompt(
+        `Add "${book.name}" to which folder?\n\nExisting folders:\n- ` +
+        folderNames.join('\n- ')
+    );
+    if (!input) {
+        closeAllBookMenus();
+        return;
+    }
+    const trimmed = input.trim();
+    if (!trimmed) {
+        closeAllBookMenus();
+        return;
     }
 
-    if (!book.folders.includes(folderName)) {
-        book.folders.push(folderName);
+    // if folder doesn't exist, create it
+    let folder = folders.find(f => f.name === trimmed);
+    if (!folder) {
+        folder = {
+            id: 'fld_' + Date.now(),
+            name: trimmed,
+            color: '#e9ecef',
+            icon: '📁'
+        };
+        folders.push(folder);
+        saveFolders();
+        renderFolderSelect();
+    }
+
+    if (!Array.isArray(book.folders)) {
+        book.folders = ['All'];
+    }
+    if (!book.folders.includes(trimmed)) {
+        book.folders.push(trimmed);
     }
     if (!book.folders.includes('All')) {
         book.folders.push('All');
@@ -751,14 +783,16 @@ function folderDrop(e) {
 
     localStorage.setItem('pdfLibrary', JSON.stringify(library));
     renderLibrary();
-
-    alert(`"${book.name}" added to "${folderName}"`);
+    closeAllBookMenus();
+    alert(`"${book.name}" added to folder "${trimmed}".`);
 }
 
-// Update zoom display on load
-function updateZoomDisplay() {
-    document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
-}
+// click anywhere to close menus
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.library-item-right')) {
+        closeAllBookMenus();
+    }
+});
 
 function renderLibrary() {
     const list = document.getElementById('libraryList');
@@ -780,124 +814,28 @@ function renderLibrary() {
 
     list.innerHTML = visibleItems.map((item) => {
         const realIndex = library.findIndex(b => b.id === item.id);
-        const inThisFolder = activeFolder !== 'All' && item.folders.includes(activeFolder);
         return `
         <div class="library-item ${currentPdfId === item.id ? 'active' : ''}"
-             data-index="${realIndex}"
-             data-id="${item.id}"
-             draggable="true"
-             ondragstart="bookDragStart(event)"
-             ondragend="bookDragEnd(event)">
-            <div onclick="loadPdfFromLibrary(${realIndex})">
+             data-index="${realIndex}">
+            <div class="library-item-main" onclick="loadPdfFromLibrary(${realIndex})">
                 <div class="library-item-title">${item.name}</div>
                 <div class="library-item-progress">Page ${item.currentPage} of ${item.totalPages}</div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: ${(item.currentPage / item.totalPages * 100)}%"></div>
                 </div>
             </div>
-            <div style="display:flex; gap:4px; margin-top:5px;">
+            <div class="library-item-right">
+                <button class="book-menu-btn" onclick="toggleBookMenu(event, ${realIndex})">⋮</button>
                 <button class="delete-btn" onclick="event.stopPropagation(); deletePdf(${realIndex})">Delete</button>
-                ${inThisFolder ? `
-                    <button class="remove-folder-btn" onclick="event.stopPropagation(); removeFromFolder(${realIndex})">
-                        Remove from "${activeFolder}"
-                    </button>` : ''}
+                <div class="book-menu-dropdown">
+                    <div class="book-menu-item" onclick="addBookToFolder(${realIndex})">
+                        Add to folder
+                    </div>
+                </div>
             </div>
         </div>
         `;
     }).join('');
-
-    attachLibraryDragHandlers();
-}
-
-function bookDragStart(e) {
-    const itemDiv = e.currentTarget;
-    const id = itemDiv.getAttribute('data-id');
-
-    draggedBookId = id;
-    itemDiv.classList.add('dragging');
-
-    if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', id);
-    }
-}
-
-function bookDragEnd(e) {
-    const itemDiv = e.currentTarget;
-    itemDiv.classList.remove('dragging');
-    draggedBookId = null;
-}
-
-// Remove book from current folder without deleting it
-function removeFromFolder(index) {
-    const book = library[index];
-    if (!book || activeFolder === 'All') return;
-    if (!Array.isArray(book.folders)) return;
-
-    book.folders = book.folders.filter(fn => fn !== activeFolder);
-    if (!book.folders.includes('All')) {
-        book.folders.push('All');
-    }
-    localStorage.setItem('pdfLibrary', JSON.stringify(library));
-    renderLibrary();
-}
-
-// Attach mouse-based drag handlers to support reordering
-function attachLibraryDragHandlers() {
-    const items = document.querySelectorAll('.library-item');
-    items.forEach(item => {
-        item.onmousedown = function(e) {
-            if (e.button !== 0 ||
-                e.target.classList.contains('delete-btn') ||
-                e.target.classList.contains('remove-folder-btn')) return;
-
-            isDraggingLibraryItem = true;
-            dragStartIndex = parseInt(this.getAttribute('data-index'));
-            dragCurrentIndex = dragStartIndex;
-            this.classList.add('dragging');
-
-            const currentItem = this;
-
-            function onMouseMove(ev) {
-                if (!isDraggingLibraryItem) return;
-                const el = document.elementFromPoint(ev.clientX, ev.clientY);
-                if (!el) return;
-                const targetItem = el.closest('.library-item');
-                document.querySelectorAll('.library-item.drag-over').forEach(i => i.classList.remove('drag-over'));
-                if (targetItem && targetItem !== currentItem) {
-                    targetItem.classList.add('drag-over');
-                    dragCurrentIndex = parseInt(targetItem.getAttribute('data-index'));
-                } else {
-                    dragCurrentIndex = dragStartIndex;
-                }
-            }
-
-            function onMouseUp(ev) {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-
-                if (!isDraggingLibraryItem) return;
-                isDraggingLibraryItem = false;
-
-                currentItem.classList.remove('dragging');
-                document.querySelectorAll('.library-item.drag-over').forEach(i => i.classList.remove('drag-over'));
-
-                if (dragCurrentIndex !== null && dragStartIndex !== null && dragCurrentIndex !== dragStartIndex) {
-                    const temp = library[dragStartIndex];
-                    library[dragStartIndex] = library[dragCurrentIndex];
-                    library[dragCurrentIndex] = temp;
-                    localStorage.setItem('pdfLibrary', JSON.stringify(library));
-                    renderLibrary();
-                }
-
-                dragStartIndex = null;
-                dragCurrentIndex = null;
-            }
-
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-        };
-    });
 }
 
 function openAddModal() {
