@@ -579,7 +579,7 @@
         let folders = JSON.parse(localStorage.getItem('pdfFolders') || '[]');
         let activeFolder = localStorage.getItem('pdfActiveFolder') || 'All';
 
-        // Initialize folders if needed
+        // Initialize folders when prompted
         if (Array.isArray(folders) && typeof folders[0] === 'string') {
             folders = folders.map(name => ({
                 id: 'fld_' + name,
@@ -594,7 +594,7 @@
         }
         if (!activeFolder) activeFolder = 'All';
 
-        // Fix library folder structure
+        // Fix for Nov. 22 library folder structure
         library.forEach(b => {
             if (!Array.isArray(b.folders)) {
                 if (b.folder) {
@@ -613,7 +613,7 @@
         localStorage.setItem('pdfFolders', JSON.stringify(folders));
         localStorage.setItem('pdfActiveFolder', activeFolder);
 
-        // Variables for drag-to-swap (EXACTLY like your reference)
+        // Variables for drag-to-swap 
         let dragStartIndex = null;
         let dragCurrentIndex = null;
         let isDraggingLibraryItem = false;
@@ -731,7 +731,7 @@
             document.querySelectorAll('.book-menu-dropdown.open').forEach(m => m.classList.remove('open'));
         }
 
-        // Update zoom display on load
+        // Update zoom display on load, shouldnt be a problem any longer with remnant values
         function updateZoomDisplay() {
             document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
         }
@@ -783,11 +783,11 @@
                 `;
             }).join('');
 
-            // Attach drag handlers after rendering (EXACTLY like your reference)
+            // Attach drag handlers after rendering to actually move "PDFS" beyond basic consolidated interface
             attachLibraryDragHandlers();
         }
 
-        // EXACT SAME DRAG LOGIC AS YOUR REFERENCE - mouse-based, default cursor, swaps on drop
+        // Exact same prior logic with  mouse-based, default cursor, swaps on drop
         function attachLibraryDragHandlers() {
             const items = document.querySelectorAll('.library-item');
             items.forEach(item => {
@@ -831,7 +831,7 @@
                         document.querySelectorAll('.library-item.drag-over').forEach(i => i.classList.remove('drag-over'));
 
                         if (dragCurrentIndex !== null && dragStartIndex !== null && dragCurrentIndex !== dragStartIndex) {
-                            // Swap positions in library array (EXACTLY like reference)
+                            // Swap positions in library array 
                             const temp = library[dragStartIndex];
                             library[dragStartIndex] = library[dragCurrentIndex];
                             library[dragCurrentIndex] = temp;
@@ -901,7 +901,7 @@
             }
         });
 
-        // [ALL OTHER FUNCTIONS REMAIN EXACTLY THE SAME AS YOUR REFERENCE]
+        // Same Modal and Aggregate Partitioning
         function openAddModal() {
             document.getElementById('addModal').classList.add('active');
             document.getElementById('pdfName').value = '';
@@ -1228,7 +1228,7 @@
             }
         });
 
-        // Initialize
+        // Finally render basic variables
         renderFolderSelect();
         renderLibrary();
         updateZoomDisplay();
