@@ -421,18 +421,116 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ─── PERFORMANCE: In-memory PDF document cache ───────────────────────────────
-// Keyed by book ID → { doc, timestamp }
-const pdfCache = new Map();
-const CACHE_MAX = 5; // keep last 5 PDFs in RAM
+// ─── PERFORMANCE: Session-level doc cache (pdfDoc objects, cleared on reload) ─
+const sessionDocCache = new Map(); // bookId → pdfDoc
 
-// ─── PERFORMANCE: Render cache ───────────────────────────────────────────────
+// ─── PERFORMANCE: Render cache (in-memory, cleared on reload) ────────────────
 // Keyed by `${bookId}-${page}-${scale}` → ImageBitmap
 const renderCache = new Map();
 const RENDER_CACHE_MAX = 20;
 
 // ─── PERFORMANCE: Preload queue ──────────────────────────────────────────────
 let preloadTimeout = null;
+
+// ─── PERSISTENT PDF BINARY CACHE (IndexedDB) ─────────────────────────────────
+// Stores raw ArrayBuffer of each PDF keyed by bookId.
+// Survives page reloads, browser restarts — no network needed once cached.
+const IDB_NAME = 'continua_pdf_cache';
+const IDB_STORE = 'pdfs';
+let idb = null;
+
+function openIDB() {
+    if (idb) return Promise.resolve(idb);
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+                const store = db.createObjectStore(IDB_STORE, { keyPath: 'bookId' });
+                store.createIndex('accessed', 'accessed', { unique: false });
+            }
+        };
+        req.onsuccess = e => { idb = e.target.result; resolve(idb); };
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function idbGet(bookId) {
+    const db = await openIDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).get(String(bookId));
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+    });
+}
+
+async function idbPut(bookId, arrayBuffer) {
+    const db = await openIDB();
+    // Evict oldest entries if we have more than 20 cached PDFs
+    const all = await new Promise(resolve => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const req = tx.objectStore(IDB_STORE).index('accessed').getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve([]);
+    });
+    if (all.length >= 20) {
+        all.sort((a, b) => a.accessed - b.accessed);
+        const toDelete = all.slice(0, all.length - 19);
+        const delTx = db.transaction(IDB_STORE, 'readwrite');
+        toDelete.forEach(item => delTx.objectStore(IDB_STORE).delete(item.bookId));
+    }
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const req = tx.objectStore(IDB_STORE).put({
+            bookId: String(bookId),
+            data: arrayBuffer,
+            accessed: Date.now(),
+            size: arrayBuffer.byteLength
+        });
+        req.onsuccess = () => resolve();
+        req.onerror = () => resolve(); // non-fatal
+    });
+}
+
+async function idbDelete(bookId) {
+    try {
+        const db = await openIDB();
+        return new Promise(resolve => {
+            const tx = db.transaction(IDB_STORE, 'readwrite');
+            tx.objectStore(IDB_STORE).delete(String(bookId));
+            tx.oncomplete = resolve;
+            tx.onerror = resolve;
+        });
+    } catch (_) {}
+}
+
+// Touch accessed timestamp when reading from cache
+async function idbTouch(bookId) {
+    const db = await openIDB();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    const req = store.get(String(bookId));
+    req.onsuccess = () => {
+        if (req.result) { req.result.accessed = Date.now(); store.put(req.result); }
+    };
+}
+
+// Returns a Set of bookIds that exist in IDB (used to show CACHED badge)
+async function idbGetCachedIds() {
+    try {
+        const db = await openIDB();
+        return new Promise(resolve => {
+            const tx = db.transaction(IDB_STORE, 'readonly');
+            const req = tx.objectStore(IDB_STORE).getAllKeys();
+            req.onsuccess = () => resolve(new Set(req.result.map(String)));
+            req.onerror = () => resolve(new Set());
+        });
+    } catch (_) { return new Set(); }
+}
+
+let cachedBookIds = new Set(); // populated on init, kept in sync
+openIDB().then(() => idbGetCachedIds().then(ids => { cachedBookIds = ids; renderLibrary(); }));
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]');
@@ -479,7 +577,6 @@ function setLoadBar(pct) {
 }
 
 // ─── ULTRA-FAST PROXY RACE ────────────────────────────────────────────────────
-// Fire all proxies simultaneously, take the first success
 function getProxies(url) {
     return [
         url,
@@ -489,49 +586,82 @@ function getProxies(url) {
     ];
 }
 
+// Fetch raw bytes racing all proxies
+async function fetchPdfBytes(url) {
+    const proxies = getProxies(url);
+    const racePromises = proxies.map(async proxyUrl => {
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength < 100) throw new Error('Empty response');
+        return buf;
+    });
+    return Promise.any(racePromises);
+}
+
 async function loadPdfFast(url, bookId) {
-    // 1. Check in-memory cache first (instant)
-    if (pdfCache.has(bookId)) {
-        const cached = pdfCache.get(bookId);
-        cached.timestamp = Date.now();
-        return cached.doc;
+    const cMapUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/';
+
+    // ── Tier 1: Session doc cache (already parsed pdfDoc object) ──────────────
+    if (sessionDocCache.has(bookId)) {
+        idbTouch(bookId); // keep it fresh
+        return sessionDocCache.get(bookId);
     }
 
     setLoadBar(10);
-    const proxies = getProxies(url);
 
-    // 2. Race all proxies in parallel — no more sequential waiting
-    const racePromises = proxies.map(proxyUrl =>
-        pdfjsLib.getDocument({
-            url: proxyUrl,
-            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-            cMapPacked: true,
-            withCredentials: false,
-            // Performance: disable features we don't need
-            disableAutoFetch: false,
-            disableStream: false,
-            isEvalSupported: true,
-        }).promise.then(doc => ({ doc, url: proxyUrl }))
-    );
-
-    setLoadBar(30);
-
-    const result = await Promise.any(racePromises);
-    setLoadBar(80);
-
-    // 3. Store in cache
-    if (pdfCache.size >= CACHE_MAX) {
-        // Evict least recently used
-        let oldest = null, oldestTime = Infinity;
-        for (const [k, v] of pdfCache) {
-            if (v.timestamp < oldestTime) { oldest = k; oldestTime = v.timestamp; }
+    // ── Tier 2: IndexedDB persistent binary cache ─────────────────────────────
+    const cached = await idbGet(bookId);
+    if (cached && cached.data) {
+        setLoadBar(50);
+        idbTouch(bookId);
+        try {
+            const doc = await pdfjsLib.getDocument({
+                data: cached.data.slice(0), // clone the buffer
+                cMapUrl,
+                cMapPacked: true,
+            }).promise;
+            sessionDocCache.set(bookId, doc);
+            setLoadBar(100);
+            return doc;
+        } catch (_) {
+            // Corrupted cache entry — fall through to network
+            await idbDelete(bookId);
         }
-        if (oldest) pdfCache.delete(oldest);
     }
-    pdfCache.set(bookId, { doc: result.doc, timestamp: Date.now() });
+
+    // ── Tier 3: Network (race all proxies simultaneously) ─────────────────────
+    setLoadBar(20);
+    let arrayBuffer;
+    try {
+        arrayBuffer = await fetchPdfBytes(url);
+    } catch (_) {
+        // fetch failed — fall back to pdf.js direct URL loading as last resort
+        setLoadBar(40);
+        const proxies = getProxies(url);
+        const docPromises = proxies.map(proxyUrl =>
+            pdfjsLib.getDocument({ url: proxyUrl, cMapUrl, cMapPacked: true, withCredentials: false }).promise
+        );
+        const doc = await Promise.any(docPromises);
+        sessionDocCache.set(bookId, doc);
+        setLoadBar(100);
+        return doc;
+    }
+
+    setLoadBar(70);
+
+    // Parse & cache
+    const doc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0), cMapUrl, cMapPacked: true }).promise;
+    sessionDocCache.set(bookId, doc);
+
+    // Store bytes in IDB for next session (non-blocking)
+    idbPut(bookId, arrayBuffer).then(() => {
+        cachedBookIds.add(String(bookId));
+        renderLibrary(); // update CACHED badge
+    });
 
     setLoadBar(100);
-    return result.doc;
+    return doc;
 }
 
 // ─── FAST PAGE RENDER with canvas caching ─────────────────────────────────────
@@ -925,7 +1055,7 @@ function renderLibrary() {
 
     list.innerHTML = visibleItems.map(item => {
         const realIndex = library.findIndex(b => b.id === item.id);
-        const isCached = pdfCache.has(item.id);
+        const isCached = cachedBookIds.has(String(item.id));
         const canRemove = activeFolder !== 'All' && Array.isArray(item.folders) && item.folders.includes(activeFolder);
         return `
             <div class="library-item ${currentPdfId === item.id ? 'active' : ''}" data-index="${realIndex}">
@@ -1012,7 +1142,11 @@ function attachLibraryDragHandlers() {
 function deletePdf(index) {
     if (confirm('Are you sure you want to delete this PDF from your library?')) {
         const id = library[index]?.id;
-        if (id) { pdfCache.delete(id); }
+        if (id) {
+            sessionDocCache.delete(id);
+            idbDelete(id);
+            cachedBookIds.delete(String(id));
+        }
         library.splice(index, 1);
         localStorage.setItem('pdfLibrary', JSON.stringify(library));
         renderLibrary();
