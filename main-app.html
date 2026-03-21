@@ -421,20 +421,26 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ─── PERFORMANCE: Session-level doc cache (pdfDoc objects, cleared on reload) ─
+// ─── FEATURE DETECT ───────────────────────────────────────────────────────────
+// FIX: detect OffscreenCanvas support once so renderPage doesn't silently crash
+const SUPPORTS_OFFSCREEN = (function() {
+    try { return typeof OffscreenCanvas !== 'undefined' && !!new OffscreenCanvas(1,1).getContext('2d'); }
+    catch(_) { return false; }
+})();
+
+// ─── SESSION-LEVEL DOC CACHE (pdfDoc objects) ─────────────────────────────────
 const sessionDocCache = new Map(); // bookId → pdfDoc
 
-// ─── PERFORMANCE: Render cache (in-memory, cleared on reload) ────────────────
-// Keyed by `${bookId}-${page}-${scale}` → ImageBitmap
+// ─── RENDER CACHE ─────────────────────────────────────────────────────────────
+// FIX: Store raw ImageData (not ImageBitmap) so we can repaint without consuming.
+// Key: `${bookId}-${page}-${scale}` → ImageData
 const renderCache = new Map();
 const RENDER_CACHE_MAX = 20;
 
-// ─── PERFORMANCE: Preload queue ──────────────────────────────────────────────
+// ─── PRELOAD ──────────────────────────────────────────────────────────────────
 let preloadTimeout = null;
 
 // ─── PERSISTENT PDF BINARY CACHE (IndexedDB) ─────────────────────────────────
-// Stores raw ArrayBuffer of each PDF keyed by bookId.
-// Survives page reloads, browser restarts — no network needed once cached.
 const IDB_NAME = 'continua_pdf_cache';
 const IDB_STORE = 'pdfs';
 let idb = null;
@@ -456,41 +462,46 @@ function openIDB() {
 }
 
 async function idbGet(bookId) {
-    const db = await openIDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(IDB_STORE, 'readonly');
-        const req = tx.objectStore(IDB_STORE).get(String(bookId));
-        req.onsuccess = () => resolve(req.result || null);
-        req.onerror = () => resolve(null);
-    });
+    try {
+        const db = await openIDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(IDB_STORE, 'readonly');
+            const req = tx.objectStore(IDB_STORE).get(String(bookId));
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch(_) { return null; }
 }
 
 async function idbPut(bookId, arrayBuffer) {
-    const db = await openIDB();
-    // Evict oldest entries if we have more than 20 cached PDFs
-    const all = await new Promise(resolve => {
-        const tx = db.transaction(IDB_STORE, 'readonly');
-        const req = tx.objectStore(IDB_STORE).index('accessed').getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve([]);
-    });
-    if (all.length >= 20) {
-        all.sort((a, b) => a.accessed - b.accessed);
-        const toDelete = all.slice(0, all.length - 19);
-        const delTx = db.transaction(IDB_STORE, 'readwrite');
-        toDelete.forEach(item => delTx.objectStore(IDB_STORE).delete(item.bookId));
-    }
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(IDB_STORE, 'readwrite');
-        const req = tx.objectStore(IDB_STORE).put({
-            bookId: String(bookId),
-            data: arrayBuffer,
-            accessed: Date.now(),
-            size: arrayBuffer.byteLength
+    try {
+        const db = await openIDB();
+        const all = await new Promise(resolve => {
+            const tx = db.transaction(IDB_STORE, 'readonly');
+            const req = tx.objectStore(IDB_STORE).index('accessed').getAll();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve([]);
         });
-        req.onsuccess = () => resolve();
-        req.onerror = () => resolve(); // non-fatal
-    });
+        // Only evict if at/over limit
+        if (all.length >= 20) {
+            all.sort((a, b) => a.accessed - b.accessed);
+            const toDelete = all.slice(0, all.length - 19);
+            const delTx = db.transaction(IDB_STORE, 'readwrite');
+            toDelete.forEach(item => delTx.objectStore(IDB_STORE).delete(item.bookId));
+            await new Promise(r => { delTx.oncomplete = r; delTx.onerror = r; });
+        }
+        return new Promise((resolve) => {
+            const tx = db.transaction(IDB_STORE, 'readwrite');
+            const req = tx.objectStore(IDB_STORE).put({
+                bookId: String(bookId),
+                data: arrayBuffer,
+                accessed: Date.now(),
+                size: arrayBuffer.byteLength
+            });
+            req.onsuccess = () => resolve();
+            req.onerror = () => resolve();
+        });
+    } catch(_) {}
 }
 
 async function idbDelete(bookId) {
@@ -505,18 +516,18 @@ async function idbDelete(bookId) {
     } catch (_) {}
 }
 
-// Touch accessed timestamp when reading from cache
 async function idbTouch(bookId) {
-    const db = await openIDB();
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    const store = tx.objectStore(IDB_STORE);
-    const req = store.get(String(bookId));
-    req.onsuccess = () => {
-        if (req.result) { req.result.accessed = Date.now(); store.put(req.result); }
-    };
+    try {
+        const db = await openIDB();
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        const req = store.get(String(bookId));
+        req.onsuccess = () => {
+            if (req.result) { req.result.accessed = Date.now(); store.put(req.result); }
+        };
+    } catch(_) {}
 }
 
-// Returns a Set of bookIds that exist in IDB (used to show CACHED badge)
 async function idbGetCachedIds() {
     try {
         const db = await openIDB();
@@ -529,10 +540,10 @@ async function idbGetCachedIds() {
     } catch (_) { return new Set(); }
 }
 
-let cachedBookIds = new Set(); // populated on init, kept in sync
+let cachedBookIds = new Set();
 openIDB().then(() => idbGetCachedIds().then(ids => { cachedBookIds = ids; renderLibrary(); }));
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// ─── STATE ────────────────────────────────────────────────────────────────────
 let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]');
 let currentPage = 1;
 let totalPages = 0;
@@ -545,7 +556,6 @@ let pendingRender = null;
 let folders = JSON.parse(localStorage.getItem('pdfFolders') || '[]');
 let activeFolder = localStorage.getItem('pdfActiveFolder') || 'All';
 
-// Migrate old folder format
 if (Array.isArray(folders) && typeof folders[0] === 'string') {
     folders = folders.map(name => ({ id: 'fld_' + name, name, color: '#e9ecef', icon: '📁' }));
 }
@@ -576,7 +586,15 @@ function setLoadBar(pct) {
     if (pct >= 100) setTimeout(() => { bar.style.width = '0'; }, 400);
 }
 
-// ─── ULTRA-FAST PROXY RACE ────────────────────────────────────────────────────
+// ─── FETCH WITH TIMEOUT ───────────────────────────────────────────────────────
+// FIX: Wrap fetch with a timeout so stalled proxies don't hang forever
+function fetchWithTimeout(url, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+// ─── PROXY RACE ───────────────────────────────────────────────────────────────
 function getProxies(url) {
     return [
         url,
@@ -586,11 +604,12 @@ function getProxies(url) {
     ];
 }
 
-// Fetch raw bytes racing all proxies
+// FIX: fetchPdfBytes now has per-request timeout; fallback uses pdfjsLib directly
+// on the SAME proxy list but as a separate last-ditch attempt (not just looping).
 async function fetchPdfBytes(url) {
     const proxies = getProxies(url);
     const racePromises = proxies.map(async proxyUrl => {
-        const res = await fetch(proxyUrl);
+        const res = await fetchWithTimeout(proxyUrl, 15000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = await res.arrayBuffer();
         if (buf.byteLength < 100) throw new Error('Empty response');
@@ -602,22 +621,22 @@ async function fetchPdfBytes(url) {
 async function loadPdfFast(url, bookId) {
     const cMapUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/';
 
-    // ── Tier 1: Session doc cache (already parsed pdfDoc object) ──────────────
+    // Tier 1: Session cache
     if (sessionDocCache.has(bookId)) {
-        idbTouch(bookId); // keep it fresh
+        idbTouch(bookId);
         return sessionDocCache.get(bookId);
     }
 
     setLoadBar(10);
 
-    // ── Tier 2: IndexedDB persistent binary cache ─────────────────────────────
+    // Tier 2: IndexedDB
     const cached = await idbGet(bookId);
     if (cached && cached.data) {
         setLoadBar(50);
         idbTouch(bookId);
         try {
             const doc = await pdfjsLib.getDocument({
-                data: cached.data.slice(0), // clone the buffer
+                data: cached.data.slice(0),
                 cMapUrl,
                 cMapPacked: true,
             }).promise;
@@ -625,50 +644,58 @@ async function loadPdfFast(url, bookId) {
             setLoadBar(100);
             return doc;
         } catch (_) {
-            // Corrupted cache entry — fall through to network
             await idbDelete(bookId);
+            cachedBookIds.delete(String(bookId));
         }
     }
 
-    // ── Tier 3: Network (race all proxies simultaneously) ─────────────────────
+    // Tier 3: Network — fetch raw bytes and parse
     setLoadBar(20);
-    let arrayBuffer;
+    let arrayBuffer = null;
     try {
         arrayBuffer = await fetchPdfBytes(url);
     } catch (_) {
-        // fetch failed — fall back to pdf.js direct URL loading as last resort
+        // fetchPdfBytes fully failed; try pdfjsLib direct URL load as last resort
+        // FIX: This is a genuinely different approach (stream vs bytes), not just retrying same proxies
         setLoadBar(40);
         const proxies = getProxies(url);
         const docPromises = proxies.map(proxyUrl =>
             pdfjsLib.getDocument({ url: proxyUrl, cMapUrl, cMapPacked: true, withCredentials: false }).promise
         );
-        const doc = await Promise.any(docPromises);
-        sessionDocCache.set(bookId, doc);
-        setLoadBar(100);
-        return doc;
+        try {
+            const doc = await Promise.any(docPromises);
+            sessionDocCache.set(bookId, doc);
+            setLoadBar(100);
+            return doc;
+        } catch(finalErr) {
+            setLoadBar(0);
+            throw new Error('All loading strategies failed. The PDF URL may be unreachable or CORS-blocked. Try a direct PDF link.');
+        }
     }
 
     setLoadBar(70);
-
-    // Parse & cache
     const doc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0), cMapUrl, cMapPacked: true }).promise;
     sessionDocCache.set(bookId, doc);
 
-    // Store bytes in IDB for next session (non-blocking)
+    // Store in IDB non-blocking
     idbPut(bookId, arrayBuffer).then(() => {
         cachedBookIds.add(String(bookId));
-        renderLibrary(); // update CACHED badge
+        renderLibrary();
     });
 
     setLoadBar(100);
     return doc;
 }
 
-// ─── FAST PAGE RENDER with canvas caching ─────────────────────────────────────
+// ─── PAGE RENDER ──────────────────────────────────────────────────────────────
+// FIX 1: Store ImageData in renderCache instead of ImageBitmap.
+//         ImageBitmap is neutered after transferFromImageBitmap; ImageData is plain data you can reuse.
+// FIX 2: OffscreenCanvas support is checked up-front via SUPPORTS_OFFSCREEN.
+// FIX 3: renderInProgress flag is reset correctly even when fallback is used.
+
 async function renderPage(pageNum) {
     if (!pdfDoc) return;
 
-    // Debounce: if already rendering, queue this one
     if (renderInProgress) {
         pendingRender = pageNum;
         return;
@@ -677,17 +704,15 @@ async function renderPage(pageNum) {
     renderInProgress = true;
     pendingRender = null;
 
-    const cacheKey = `${currentPdfId}-${pageNum}-${scale}`;
-
     try {
+        const cacheKey = `${currentPdfId}-${pageNum}-${scale}`;
         const viewer = document.getElementById('pdfViewer');
 
-        // Show skeleton immediately while rendering
         if (!renderCache.has(cacheKey)) {
             const page = await pdfDoc.getPage(pageNum);
             const viewport = page.getViewport({ scale });
 
-            // Show skeleton with correct dimensions
+            // Show skeleton while rendering
             viewer.innerHTML = '';
             const skeleton = document.createElement('div');
             skeleton.className = 'loading-skeleton';
@@ -695,25 +720,34 @@ async function renderPage(pageNum) {
             skeleton.style.height = viewport.height + 'px';
             viewer.appendChild(skeleton);
 
-            // Render off-screen for speed
-            const offCanvas = new OffscreenCanvas(viewport.width, viewport.height);
-            const ctx = offCanvas.getContext('2d');
-            await page.render({ canvasContext: ctx, viewport }).promise;
-            const bitmap = await offCanvas.transferToImageBitmap();
-
-            // Cache it
-            if (renderCache.size >= RENDER_CACHE_MAX) {
-                renderCache.delete(renderCache.keys().next().value);
+            if (SUPPORTS_OFFSCREEN) {
+                // Render off-screen for performance
+                const offCanvas = new OffscreenCanvas(viewport.width, viewport.height);
+                const ctx = offCanvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                // FIX: Read back as ImageData (reusable) instead of ImageBitmap (consumed on transfer)
+                const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
+                evictRenderCache();
+                renderCache.set(cacheKey, { imageData, width: viewport.width, height: viewport.height });
+            } else {
+                // Fallback: render to a regular canvas and read back ImageData
+                const tmpCanvas = document.createElement('canvas');
+                tmpCanvas.width = viewport.width;
+                tmpCanvas.height = viewport.height;
+                const ctx = tmpCanvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
+                evictRenderCache();
+                renderCache.set(cacheKey, { imageData, width: viewport.width, height: viewport.height });
             }
-            renderCache.set(cacheKey, bitmap);
         }
 
-        // Paint from cache
-        const bitmap = renderCache.get(cacheKey);
+        // Paint from cache onto a fresh canvas
+        const { imageData, width, height } = renderCache.get(cacheKey);
         const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        canvas.getContext('bitmaprenderer').transferFromImageBitmap(bitmap.clone ? bitmap : await createImageBitmap(bitmap));
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').putImageData(imageData, 0, 0);
 
         viewer.innerHTML = '';
         const container = document.createElement('div');
@@ -724,46 +758,30 @@ async function renderPage(pageNum) {
         currentPage = pageNum;
         document.getElementById('pageInput').value = pageNum;
         updateProgress();
-
-        // Preload adjacent pages in background
         schedulePreload(pageNum);
 
     } catch (e) {
-        // Fallback to regular canvas if OffscreenCanvas fails
-        await renderPageFallback(pageNum);
-    }
-
-    renderInProgress = false;
-
-    // Process any pending render
-    if (pendingRender !== null) {
-        const next = pendingRender;
-        pendingRender = null;
-        await renderPage(next);
+        console.error('renderPage error:', e);
+        document.getElementById('pdfViewer').innerHTML =
+            `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Render Error</h3><p>${e.message}</p></div>`;
+    } finally {
+        // FIX: Always reset the flag, even on error
+        renderInProgress = false;
+        if (pendingRender !== null) {
+            const next = pendingRender;
+            pendingRender = null;
+            await renderPage(next);
+        }
     }
 }
 
-// Fallback renderer for browsers without OffscreenCanvas
-async function renderPageFallback(pageNum) {
-    const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-    const viewer = document.getElementById('pdfViewer');
-    viewer.innerHTML = '';
-    const container = document.createElement('div');
-    container.className = 'pdf-canvas-container';
-    container.appendChild(canvas);
-    viewer.appendChild(container);
-
-    currentPage = pageNum;
-    document.getElementById('pageInput').value = pageNum;
+function evictRenderCache() {
+    if (renderCache.size >= RENDER_CACHE_MAX) {
+        renderCache.delete(renderCache.keys().next().value);
+    }
 }
 
-// Preload next and previous pages into render cache
+// Preload adjacent pages into renderCache
 function schedulePreload(currentPageNum) {
     if (preloadTimeout) clearTimeout(preloadTimeout);
     preloadTimeout = setTimeout(async () => {
@@ -776,17 +794,27 @@ function schedulePreload(currentPageNum) {
                 try {
                     const page = await pdfDoc.getPage(p);
                     const viewport = page.getViewport({ scale });
-                    const offCanvas = new OffscreenCanvas(viewport.width, viewport.height);
-                    await page.render({ canvasContext: offCanvas.getContext('2d'), viewport }).promise;
-                    const bitmap = await offCanvas.transferToImageBitmap();
-                    if (renderCache.size >= RENDER_CACHE_MAX) {
-                        renderCache.delete(renderCache.keys().next().value);
+                    if (SUPPORTS_OFFSCREEN) {
+                        const offCanvas = new OffscreenCanvas(viewport.width, viewport.height);
+                        const ctx = offCanvas.getContext('2d');
+                        await page.render({ canvasContext: ctx, viewport }).promise;
+                        const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
+                        evictRenderCache();
+                        renderCache.set(key, { imageData, width: viewport.width, height: viewport.height });
+                    } else {
+                        const tmpCanvas = document.createElement('canvas');
+                        tmpCanvas.width = viewport.width;
+                        tmpCanvas.height = viewport.height;
+                        const ctx = tmpCanvas.getContext('2d');
+                        await page.render({ canvasContext: ctx, viewport }).promise;
+                        const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
+                        evictRenderCache();
+                        renderCache.set(key, { imageData, width: viewport.width, height: viewport.height });
                     }
-                    renderCache.set(key, bitmap);
-                } catch (_) { /* silent */ }
+                } catch (_) { /* silent — preload is best-effort */ }
             }
         }
-    }, 300); // small delay so it doesn't compete with current render
+    }, 300);
 }
 
 // ─── LIBRARY LOADING ──────────────────────────────────────────────────────────
@@ -795,8 +823,6 @@ async function loadPdfFromLibrary(index) {
     currentPdfId = item.id;
 
     const viewer = document.getElementById('pdfViewer');
-
-    // Show skeleton immediately at approximate size
     viewer.innerHTML = `<div class="loading-skeleton" style="width:595px;height:842px;"></div>`;
 
     try {
@@ -809,9 +835,6 @@ async function loadPdfFromLibrary(index) {
         document.getElementById('totalPages').textContent = totalPages;
         document.getElementById('pageInput').max = totalPages;
         updateZoomDisplay();
-
-        // Clear render cache for this book if scale changed
-        // (zoom change clears it automatically since key includes scale)
 
         await renderPage(currentPage);
         await loadTableOfContents();
@@ -879,7 +902,6 @@ async function goToPage() {
 }
 
 // ─── ZOOM ─────────────────────────────────────────────────────────────────────
-// Clear render cache on zoom since keys are scale-specific
 function clearRenderCacheForCurrentBook() {
     for (const key of [...renderCache.keys()]) {
         if (key.startsWith(`${currentPdfId}-`)) renderCache.delete(key);
@@ -1050,6 +1072,7 @@ function renderLibrary() {
 
     if (!visibleItems.length) {
         list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"></div><p>No books in this folder</p></div>';
+        renderFolderSelect();
         return;
     }
 
@@ -1084,6 +1107,7 @@ function renderLibrary() {
         `;
     }).join('');
 
+    renderFolderSelect();
     attachLibraryDragHandlers();
 }
 
@@ -1152,7 +1176,7 @@ function deletePdf(index) {
         renderLibrary();
         if (!library.length) {
             document.getElementById('pdfViewer').innerHTML = `
-                <div class="empty-state"><div class="empty-state-icon"></div><h3>No PDF Loaded</h3><p>Click "Add PDF" to load a document from URL</p></div>
+                <div class="empty-state"><div class="empty-state-icon">📄</div><h3>No PDF Loaded</h3><p>Click "Add PDF" to load a document from URL</p></div>
             `;
         }
     }
