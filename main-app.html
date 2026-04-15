@@ -629,46 +629,47 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-//  FEATURE DETECT 
+// ─── FEATURE DETECT ───────────────────────────────────────────────────────────
 const SUPPORTS_OFFSCREEN = (function() {
     try { return typeof OffscreenCanvas !== 'undefined' && !!new OffscreenCanvas(1,1).getContext('2d'); }
     catch(_) { return false; }
 })();
 
-//  SESSION-LEVEL DOC CACHE 
-const sessionDocCache = new Map();
+// ─── SESSION-LEVEL DOC CACHE ──────────────────────────────────────────────────
+const sessionDocCache = new Map(); // bookId → pdfDoc
 
-//  RENDER CACHE 
-const renderCache = new Map();
-const RENDER_CACHE_MAX = 20;
+// ─── RENDER CACHE ─────────────────────────────────────────────────────────────
+// Stores live HTMLCanvasElement objects — zero copy on paint, instant display.
+const renderCache = new Map(); // cacheKey → { canvas, width, height }
+const RENDER_CACHE_MAX = 30;   // bigger cache = more instant page turns
+const renderCacheOrder = [];   // insertion-order LRU tracking
 
-//  PRELOAD 
+// ─── PRELOAD ──────────────────────────────────────────────────────────────────
 let preloadTimeout = null;
 
-//  PERSISTENT PDF BINARY CACHE (IndexedDB) 
+// ─── PERSISTENT PDF BINARY CACHE (IndexedDB) ─────────────────────────────────
 const IDB_NAME = 'continua_pdf_cache';
 const IDB_STORE = 'pdfs';
 let idb = null;
 
-function openIDB() {
-    if (idb) return Promise.resolve(idb);
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(IDB_NAME, 1);
-        req.onupgradeneeded = e => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(IDB_STORE)) {
-                const store = db.createObjectStore(IDB_STORE, { keyPath: 'bookId' });
-                store.createIndex('accessed', 'accessed', { unique: false });
-            }
-        };
-        req.onsuccess = e => { idb = e.target.result; resolve(idb); };
-        req.onerror = () => reject(req.error);
-    });
-}
+// Open IDB once and keep the handle; all callers share it.
+const idbReady = new Promise((resolve) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+            const store = db.createObjectStore(IDB_STORE, { keyPath: 'bookId' });
+            store.createIndex('accessed', 'accessed', { unique: false });
+        }
+    };
+    req.onsuccess = e => { idb = e.target.result; resolve(idb); };
+    req.onerror = () => resolve(null); // graceful degradation
+});
 
 async function idbGet(bookId) {
     try {
-        const db = await openIDB();
+        const db = await idbReady;
+        if (!db) return null;
         return new Promise((resolve) => {
             const tx = db.transaction(IDB_STORE, 'readonly');
             const req = tx.objectStore(IDB_STORE).get(String(bookId));
@@ -680,61 +681,49 @@ async function idbGet(bookId) {
 
 async function idbPut(bookId, arrayBuffer) {
     try {
-        const db = await openIDB();
+        const db = await idbReady;
+        if (!db) return;
+        // Evict LRU entries if at cap — do it in the same tx as the put
         const all = await new Promise(resolve => {
             const tx = db.transaction(IDB_STORE, 'readonly');
-            const req = tx.objectStore(IDB_STORE).index('accessed').getAll();
+            const req = tx.objectStore(IDB_STORE).index('accessed').getAllKeys();
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => resolve([]);
         });
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
         if (all.length >= 20) {
-            all.sort((a, b) => a.accessed - b.accessed);
-            const toDelete = all.slice(0, all.length - 19);
-            const delTx = db.transaction(IDB_STORE, 'readwrite');
-            toDelete.forEach(item => delTx.objectStore(IDB_STORE).delete(item.bookId));
-            await new Promise(r => { delTx.oncomplete = r; delTx.onerror = r; });
+            // getAllKeys on index returns sorted ascending by accessed; delete oldest
+            store.delete(all[0]);
         }
-        return new Promise((resolve) => {
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            const req = tx.objectStore(IDB_STORE).put({
-                bookId: String(bookId),
-                data: arrayBuffer,
-                accessed: Date.now(),
-                size: arrayBuffer.byteLength
-            });
-            req.onsuccess = () => resolve();
-            req.onerror = () => resolve();
-        });
+        store.put({ bookId: String(bookId), data: arrayBuffer, accessed: Date.now(), size: arrayBuffer.byteLength });
     } catch(_) {}
 }
 
 async function idbDelete(bookId) {
     try {
-        const db = await openIDB();
-        return new Promise(resolve => {
-            const tx = db.transaction(IDB_STORE, 'readwrite');
-            tx.objectStore(IDB_STORE).delete(String(bookId));
-            tx.oncomplete = resolve;
-            tx.onerror = resolve;
-        });
+        const db = await idbReady;
+        if (!db) return;
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(String(bookId));
     } catch (_) {}
 }
 
-async function idbTouch(bookId) {
-    try {
-        const db = await openIDB();
+function idbTouch(bookId) {
+    // Fire-and-forget; don't await this ever
+    idbReady.then(db => {
+        if (!db) return;
         const tx = db.transaction(IDB_STORE, 'readwrite');
         const store = tx.objectStore(IDB_STORE);
         const req = store.get(String(bookId));
-        req.onsuccess = () => {
-            if (req.result) { req.result.accessed = Date.now(); store.put(req.result); }
-        };
-    } catch(_) {}
+        req.onsuccess = () => { if (req.result) { req.result.accessed = Date.now(); store.put(req.result); } };
+    }).catch(() => {});
 }
 
 async function idbGetCachedIds() {
     try {
-        const db = await openIDB();
+        const db = await idbReady;
+        if (!db) return new Set();
         return new Promise(resolve => {
             const tx = db.transaction(IDB_STORE, 'readonly');
             const req = tx.objectStore(IDB_STORE).getAllKeys();
@@ -745,9 +734,10 @@ async function idbGetCachedIds() {
 }
 
 let cachedBookIds = new Set();
-openIDB().then(() => idbGetCachedIds().then(ids => { cachedBookIds = ids; renderLibrary(); }));
+// Kick off IDB init immediately; update badge when ready (non-blocking)
+idbGetCachedIds().then(ids => { cachedBookIds = ids; renderLibrary(); });
 
-//  STATE 
+// ─── STATE ────────────────────────────────────────────────────────────────────
 let library = JSON.parse(localStorage.getItem('pdfLibrary') || '[]');
 let currentPage = 1;
 let totalPages = 0;
@@ -783,21 +773,21 @@ localStorage.setItem('pdfActiveFolder', activeFolder);
 
 let dragStartIndex = null, dragCurrentIndex = null, isDraggingLibraryItem = false;
 
-//  LOAD BAR 
+// ─── LOAD BAR ─────────────────────────────────────────────────────────────────
 function setLoadBar(pct) {
     const bar = document.getElementById('loadBar');
     bar.style.width = pct + '%';
     if (pct >= 100) setTimeout(() => { bar.style.width = '0'; }, 400);
 }
 
-//  FETCH WITH TIMEOUT 
-function fetchWithTimeout(url, timeoutMs = 15000) {
+// ─── FETCH WITH TIMEOUT ───────────────────────────────────────────────────────
+function fetchWithTimeout(url, timeoutMs = 12000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-//  PROXY RACE 
+// ─── PROXY RACE ───────────────────────────────────────────────────────────────
 function getProxies(url) {
     return [
         url,
@@ -810,7 +800,7 @@ function getProxies(url) {
 async function fetchPdfBytes(url) {
     const proxies = getProxies(url);
     const racePromises = proxies.map(async proxyUrl => {
-        const res = await fetchWithTimeout(proxyUrl, 15000);
+        const res = await fetchWithTimeout(proxyUrl, 12000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = await res.arrayBuffer();
         if (buf.byteLength < 100) throw new Error('Empty response');
@@ -819,44 +809,59 @@ async function fetchPdfBytes(url) {
     return Promise.any(racePromises);
 }
 
-async function loadPdfFast(url, bookId) {
-    const cMapUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/';
+// ─── CORE PDF LOADER ──────────────────────────────────────────────────────────
+// Three-tier loading:
+//   1. Session cache  → instant (same-tab revisit)
+//   2. IndexedDB      → fast (~50-200ms, no network)
+//   3. Network        → fetch bytes, parse, store in IDB for next time
+//
+// Key insight: IDB read is kicked off in parallel with showing the skeleton,
+// not awaited before we even start. The caller gets the doc as fast as possible.
 
+const cMapUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/';
+const PDF_OPTIONS = { cMapUrl, cMapPacked: true, disableAutoFetch: false, disableStream: false };
+
+async function loadPdfFast(url, bookId) {
+    // Tier 1: session memory — truly instant
     if (sessionDocCache.has(bookId)) {
         idbTouch(bookId);
         return sessionDocCache.get(bookId);
     }
 
-    setLoadBar(10);
+    setLoadBar(15);
 
-    const cached = await idbGet(bookId);
-    if (cached && cached.data) {
-        setLoadBar(50);
-        idbTouch(bookId);
-        try {
-            const doc = await pdfjsLib.getDocument({
-                data: cached.data.slice(0),
-                cMapUrl,
-                cMapPacked: true,
-            }).promise;
-            sessionDocCache.set(bookId, doc);
-            setLoadBar(100);
-            return doc;
-        } catch (_) {
-            await idbDelete(bookId);
-            cachedBookIds.delete(String(bookId));
+    // Tier 2: IndexedDB — fast local read, no network round-trip
+    // We check cachedBookIds first to skip the async IDB lookup entirely when
+    // we know nothing is there.
+    if (cachedBookIds.has(String(bookId))) {
+        const cached = await idbGet(bookId);
+        if (cached && cached.data) {
+            setLoadBar(60);
+            idbTouch(bookId);
+            try {
+                const doc = await pdfjsLib.getDocument({ ...PDF_OPTIONS, data: cached.data }).promise;
+                sessionDocCache.set(bookId, doc);
+                setLoadBar(100);
+                return doc;
+            } catch (_) {
+                // Corrupted cache entry — fall through to network
+                await idbDelete(bookId);
+                cachedBookIds.delete(String(bookId));
+            }
         }
     }
 
-    setLoadBar(20);
+    // Tier 3: Network fetch — race all proxies simultaneously
+    setLoadBar(25);
     let arrayBuffer = null;
     try {
         arrayBuffer = await fetchPdfBytes(url);
     } catch (_) {
+        // fetchPdfBytes failed entirely; try pdfjsLib streaming as last resort
         setLoadBar(40);
         const proxies = getProxies(url);
         const docPromises = proxies.map(proxyUrl =>
-            pdfjsLib.getDocument({ url: proxyUrl, cMapUrl, cMapPacked: true, withCredentials: false }).promise
+            pdfjsLib.getDocument({ ...PDF_OPTIONS, url: proxyUrl, withCredentials: false }).promise
         );
         try {
             const doc = await Promise.any(docPromises);
@@ -869,20 +874,46 @@ async function loadPdfFast(url, bookId) {
         }
     }
 
-    setLoadBar(70);
-    const doc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0), cMapUrl, cMapPacked: true }).promise;
+    setLoadBar(75);
+    // Pass buffer directly — no .slice(0) copy needed, pdfjsLib doesn't mutate it
+    const doc = await pdfjsLib.getDocument({ ...PDF_OPTIONS, data: arrayBuffer }).promise;
     sessionDocCache.set(bookId, doc);
+    setLoadBar(100);
 
+    // Store in IDB asynchronously — don't block rendering
     idbPut(bookId, arrayBuffer).then(() => {
         cachedBookIds.add(String(bookId));
-        renderLibrary();
+        updateLibraryCacheBadge(bookId); // targeted badge update, not full re-render
     });
 
-    setLoadBar(100);
     return doc;
 }
 
-//  PAGE RENDER 
+// ─── TARGETED CACHE BADGE UPDATE ─────────────────────────────────────────────
+// Avoids full renderLibrary() call just to show the CACHED badge
+function updateLibraryCacheBadge(bookId) {
+    const items = document.querySelectorAll('.library-item');
+    items.forEach(item => {
+        const idx = parseInt(item.getAttribute('data-index'));
+        if (!isNaN(idx) && library[idx] && library[idx].id === bookId) {
+            const titleEl = item.querySelector('.library-item-title');
+            if (titleEl && !titleEl.querySelector('.cache-badge')) {
+                const badge = document.createElement('span');
+                badge.className = 'cache-badge';
+                badge.textContent = 'CACHED';
+                titleEl.appendChild(badge);
+            }
+        }
+    });
+}
+
+// ─── PAGE RENDER ──────────────────────────────────────────────────────────────
+// Key optimizations:
+//   - Cache stores the live HTMLCanvasElement — painting is a single DOM append,
+//     no getImageData/putImageData copy overhead.
+//   - If already cached, paint is synchronous and ~instant.
+//   - Skeleton only shown when we actually have to render (cache miss).
+
 async function renderPage(pageNum) {
     if (!pdfDoc) return;
 
@@ -894,46 +925,37 @@ async function renderPage(pageNum) {
     renderInProgress = true;
     pendingRender = null;
 
+    const viewer = document.getElementById('pdfViewer');
+
     try {
         const cacheKey = `${currentPdfId}-${pageNum}-${scale}`;
-        const viewer = document.getElementById('pdfViewer');
 
         if (!renderCache.has(cacheKey)) {
+            // Cache miss — need to actually render
             const page = await pdfDoc.getPage(pageNum);
             const viewport = page.getViewport({ scale });
 
-            viewer.innerHTML = '';
+            // Show skeleton sized to the actual page — avoids layout jump
             const skeleton = document.createElement('div');
             skeleton.className = 'loading-skeleton';
-            skeleton.style.width = viewport.width + 'px';
-            skeleton.style.height = viewport.height + 'px';
+            skeleton.style.cssText = `width:${viewport.width}px;height:${viewport.height}px`;
+            viewer.innerHTML = '';
             viewer.appendChild(skeleton);
 
-            if (SUPPORTS_OFFSCREEN) {
-                const offCanvas = new OffscreenCanvas(viewport.width, viewport.height);
-                const ctx = offCanvas.getContext('2d');
-                await page.render({ canvasContext: ctx, viewport }).promise;
-                const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
-                evictRenderCache();
-                renderCache.set(cacheKey, { imageData, width: viewport.width, height: viewport.height });
-            } else {
-                const tmpCanvas = document.createElement('canvas');
-                tmpCanvas.width = viewport.width;
-                tmpCanvas.height = viewport.height;
-                const ctx = tmpCanvas.getContext('2d');
-                await page.render({ canvasContext: ctx, viewport }).promise;
-                const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
-                evictRenderCache();
-                renderCache.set(cacheKey, { imageData, width: viewport.width, height: viewport.height });
-            }
+            // Render to a canvas we'll keep in the cache
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            evictRenderCache();
+            renderCache.set(cacheKey, canvas);
+            renderCacheOrder.push(cacheKey);
         }
 
-        const { imageData, width, height } = renderCache.get(cacheKey);
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').putImageData(imageData, 0, 0);
-
+        // Cache hit (or just-rendered) — swap skeleton for canvas
+        const canvas = renderCache.get(cacheKey);
         viewer.innerHTML = '';
         const container = document.createElement('div');
         container.className = 'pdf-canvas-container';
@@ -947,7 +969,7 @@ async function renderPage(pageNum) {
 
     } catch (e) {
         console.error('renderPage error:', e);
-        document.getElementById('pdfViewer').innerHTML =
+        viewer.innerHTML =
             `<div class="empty-state"><div class="empty-state-icon">!</div><h3>Render Error</h3><p>${e.message}</p></div>`;
     } finally {
         renderInProgress = false;
@@ -960,52 +982,55 @@ async function renderPage(pageNum) {
 }
 
 function evictRenderCache() {
-    if (renderCache.size >= RENDER_CACHE_MAX) {
-        renderCache.delete(renderCache.keys().next().value);
+    while (renderCache.size >= RENDER_CACHE_MAX) {
+        const oldest = renderCacheOrder.shift();
+        renderCache.delete(oldest);
     }
 }
 
+// ─── PARALLEL PRELOAD ────────────────────────────────────────────────────────
+// Preload next 3 and previous 1 pages in parallel (not sequential).
+// Uses requestIdleCallback when available so it doesn't compete with rendering.
 function schedulePreload(currentPageNum) {
     if (preloadTimeout) clearTimeout(preloadTimeout);
-    preloadTimeout = setTimeout(async () => {
-        const toPreload = [currentPageNum + 1, currentPageNum + 2, currentPageNum - 1].filter(
-            p => p >= 1 && p <= totalPages
-        );
-        for (const p of toPreload) {
-            const key = `${currentPdfId}-${p}-${scale}`;
-            if (!renderCache.has(key) && pdfDoc) {
-                try {
-                    const page = await pdfDoc.getPage(p);
-                    const viewport = page.getViewport({ scale });
-                    if (SUPPORTS_OFFSCREEN) {
-                        const offCanvas = new OffscreenCanvas(viewport.width, viewport.height);
-                        const ctx = offCanvas.getContext('2d');
-                        await page.render({ canvasContext: ctx, viewport }).promise;
-                        const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
-                        evictRenderCache();
-                        renderCache.set(key, { imageData, width: viewport.width, height: viewport.height });
-                    } else {
-                        const tmpCanvas = document.createElement('canvas');
-                        tmpCanvas.width = viewport.width;
-                        tmpCanvas.height = viewport.height;
-                        const ctx = tmpCanvas.getContext('2d');
-                        await page.render({ canvasContext: ctx, viewport }).promise;
-                        const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
-                        evictRenderCache();
-                        renderCache.set(key, { imageData, width: viewport.width, height: viewport.height });
-                    }
-                } catch (_) {}
-            }
+    preloadTimeout = setTimeout(() => {
+        const toPreload = [currentPageNum + 1, currentPageNum + 2, currentPageNum + 3, currentPageNum - 1]
+            .filter(p => p >= 1 && p <= totalPages);
+
+        const run = async () => {
+            // All pages rendered in parallel
+            await Promise.allSettled(toPreload.map(async p => {
+                const key = `${currentPdfId}-${p}-${scale}`;
+                if (renderCache.has(key) || !pdfDoc) return;
+                const page = await pdfDoc.getPage(p);
+                const viewport = page.getViewport({ scale });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                if (!renderCache.has(key)) { // check again after async gap
+                    evictRenderCache();
+                    renderCache.set(key, canvas);
+                    renderCacheOrder.push(key);
+                }
+            }));
+        };
+
+        if (typeof requestIdleCallback !== 'undefined') {
+            requestIdleCallback(run, { timeout: 2000 });
+        } else {
+            run();
         }
-    }, 300);
+    }, 150); // shorter delay than before
 }
 
-//  LIBRARY LOADING 
+// ─── LIBRARY LOADING ──────────────────────────────────────────────────────────
 async function loadPdfFromLibrary(index) {
     const item = library[index];
     currentPdfId = item.id;
 
     const viewer = document.getElementById('pdfViewer');
+    // Show a skeleton immediately — sized to A4 default until we know real dims
     viewer.innerHTML = `<div class="loading-skeleton" style="width:595px;height:842px;"></div>`;
 
     try {
@@ -1019,8 +1044,12 @@ async function loadPdfFromLibrary(index) {
         document.getElementById('pageInput').max = totalPages;
         updateZoomDisplay();
 
+        // Render first page immediately
         await renderPage(currentPage);
-        await loadTableOfContents();
+
+        // TOC is fire-and-forget — don't block first-page display
+        loadTableOfContents().catch(() => {});
+
         renderLibrary();
 
     } catch (error) {
@@ -1030,7 +1059,7 @@ async function loadPdfFromLibrary(index) {
     }
 }
 
-//  ADD PDF 
+// ─── ADD PDF ──────────────────────────────────────────────────────────────────
 async function addPdf() {
     const name = document.getElementById('pdfName').value.trim();
     const url = document.getElementById('pdfUrl').value.trim();
@@ -1070,7 +1099,7 @@ async function addPdf() {
     }
 }
 
-//  NAVIGATION 
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
 async function nextPage() {
     if (currentPage < totalPages) await renderPage(currentPage + 1);
 }
@@ -1084,10 +1113,14 @@ async function goToPage() {
     if (pageNum >= 1 && pageNum <= totalPages) await renderPage(pageNum);
 }
 
-//  ZOOM 
+// ─── ZOOM ─────────────────────────────────────────────────────────────────────
 function clearRenderCacheForCurrentBook() {
     for (const key of [...renderCache.keys()]) {
-        if (key.startsWith(`${currentPdfId}-`)) renderCache.delete(key);
+        if (key.startsWith(`${currentPdfId}-`)) {
+            renderCache.delete(key);
+            const i = renderCacheOrder.indexOf(key);
+            if (i !== -1) renderCacheOrder.splice(i, 1);
+        }
     }
 }
 
@@ -1111,20 +1144,28 @@ function updateZoomDisplay() {
     document.getElementById('zoomLevel').textContent = Math.round((scale / 1.5) * 100) + '%';
 }
 
-//  PROGRESS 
+// ─── PROGRESS ─────────────────────────────────────────────────────────────────
+// No longer calls renderLibrary() on every page turn — targeted DOM update only.
 function updateProgress() {
-    if (currentPdfId) {
-        const index = library.findIndex(i => i.id === currentPdfId);
-        if (index !== -1) {
-            library[index].currentPage = currentPage;
-            library[index].scale = scale;
-            localStorage.setItem('pdfLibrary', JSON.stringify(library));
-            renderLibrary();
-        }
+    if (!currentPdfId) return;
+    const index = library.findIndex(i => i.id === currentPdfId);
+    if (index === -1) return;
+
+    library[index].currentPage = currentPage;
+    library[index].scale = scale;
+    localStorage.setItem('pdfLibrary', JSON.stringify(library));
+
+    // Update only the affected library item's progress bar and text
+    const itemEl = document.querySelector(`.library-item[data-index="${index}"]`);
+    if (itemEl) {
+        const progressText = itemEl.querySelector('.library-item-progress');
+        const progressFill = itemEl.querySelector('.progress-fill');
+        if (progressText) progressText.textContent = `Page ${currentPage} of ${totalPages}`;
+        if (progressFill) progressFill.style.width = `${(currentPage / totalPages * 100) || 0}%`;
     }
 }
 
-//  TABLE OF CONTENTS 
+// ─── TABLE OF CONTENTS ────────────────────────────────────────────────────────
 async function loadTableOfContents() {
     const outline = await pdfDoc.getOutline();
     const tocList = document.getElementById('tocList');
@@ -1154,7 +1195,7 @@ async function goToTocPage(dest) {
     } catch (e) { console.error(e); }
 }
 
-//  FOLDERS 
+// ─── FOLDERS ──────────────────────────────────────────────────────────────────
 function saveFolders() {
     localStorage.setItem('pdfFolders', JSON.stringify(folders));
     localStorage.setItem('pdfActiveFolder', activeFolder);
@@ -1168,12 +1209,12 @@ function renderFolderSelect() {
     }
     if (select) {
         select.innerHTML = folders.map(f =>
-            `<option value="${f.name}" ${f.name === activeFolder ? 'selected' : ''}>${f.icon || ''} ${f.name}</option>`
+            `<option value="${f.name}" ${f.name === activeFolder ? 'selected' : ''}>${f.name}</option>`
         ).join('');
     }
     if (palette) {
         palette.innerHTML = folders.map(f =>
-            `<div class="folder-pill" data-folder="${f.name}" onclick="changeFolderByPill('${f.name}')">${f.icon || ''} ${f.name}</div>`
+            `<div class="folder-pill" data-folder="${f.name}" onclick="changeFolderByPill('${f.name}')">${f.name}</div>`
         ).join('');
     }
 }
@@ -1235,7 +1276,7 @@ function deleteFolder() {
     renderLibrary();
 }
 
-//  LIBRARY RENDER & DRAG 
+// ─── LIBRARY RENDER & DRAG ───────────────────────────────────────────────────
 function toggleBookMenu(event, index) {
     event.stopPropagation();
     closeAllBookMenus();
@@ -1353,6 +1394,14 @@ function deletePdf(index) {
             sessionDocCache.delete(id);
             idbDelete(id);
             cachedBookIds.delete(String(id));
+            // Clear render cache for this book
+            for (const key of [...renderCache.keys()]) {
+                if (key.startsWith(`${id}-`)) {
+                    renderCache.delete(key);
+                    const i = renderCacheOrder.indexOf(key);
+                    if (i !== -1) renderCacheOrder.splice(i, 1);
+                }
+            }
         }
         library.splice(index, 1);
         localStorage.setItem('pdfLibrary', JSON.stringify(library));
@@ -1403,7 +1452,7 @@ document.addEventListener('click', e => {
     if (!e.target.closest('.library-item-right')) closeAllBookMenus();
 });
 
-//  MODALS 
+// ─── MODALS ───────────────────────────────────────────────────────────────────
 function openAddModal() {
     document.getElementById('addModal').classList.add('active');
     document.getElementById('pdfName').value = '';
@@ -1413,7 +1462,7 @@ function closeAddModal() {
     document.getElementById('addModal').classList.remove('active');
 }
 
-//  UI 
+// ─── UI ───────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
@@ -1445,19 +1494,19 @@ document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement) document.getElementById('fullscreenBtn').textContent = 'Fullscreen';
 });
 
-//  KEYBOARD SHORTCUTS 
+// ─── KEYBOARD SHORTCUTS ───────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextPage();
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevPage();
 });
 
-// 
+// ══════════════════════════════════════════════════════════════════════════════
 // DICTIONARY PANEL
 // Uses Free Dictionary API (dictionaryapi.dev) — no API key required.
 // Covers the full English vocabulary: common, literary, academic, technical.
 // Fully isolated — touches only its own DOM nodes and localStorage key.
-// 
+// ══════════════════════════════════════════════════════════════════════════════
 
 let dictPanelOpen = false;
 let dictHistory = JSON.parse(localStorage.getItem('dictHistory') || '[]');
@@ -1510,11 +1559,9 @@ function renderDictResult(entries, word) {
 
     let html = renderHistoryHTML();
 
-    //  Word heading 
     html += `<div class="dict-word-heading">${escH(entries[0].word || word)}</div>`;
 
-    //  Phonetics + audio 
-    const phonetics     = entries.flatMap(e => e.phonetics || []).filter(p => p.text);
+    const phonetics = entries.flatMap(e => e.phonetics || []).filter(p => p.text);
     const uniquePhonetics = [...new Map(phonetics.map(p => [p.text, p])).values()];
     if (uniquePhonetics.length) {
         const ph = uniquePhonetics[0];
@@ -1528,7 +1575,6 @@ function renderDictResult(entries, word) {
         html += `</div>`;
     }
 
-    //  Meanings grouped by part of speech 
     const allMeanings = entries.flatMap(e => e.meanings || []);
     const meaningsByPos = {};
     allMeanings.forEach(m => {
@@ -1555,7 +1601,6 @@ function renderDictResult(entries, word) {
         html += `</div>`;
     });
 
-    //  Synonyms 
     const allSynonyms = [...new Set(
         allMeanings.flatMap(m => [
             ...(m.synonyms || []),
@@ -1572,7 +1617,6 @@ function renderDictResult(entries, word) {
         html += `</div>`;
     }
 
-    //  Antonyms 
     const allAntonyms = [...new Set(
         allMeanings.flatMap(m => [
             ...(m.antonyms || []),
@@ -1589,7 +1633,6 @@ function renderDictResult(entries, word) {
         html += `</div>`;
     }
 
-    //  Etymology 
     const origins = entries.map(e => e.origin).filter(Boolean);
     if (origins.length) {
         html += `<div class="dict-divider"></div><div class="dict-section">`;
@@ -1598,7 +1641,6 @@ function renderDictResult(entries, word) {
         html += `</div>`;
     }
 
-    //  Source link 
     const sourceUrls = [...new Set(entries.flatMap(e => e.sourceUrls || []))];
     if (sourceUrls.length) {
         html += `<div class="dict-source">Source: <a href="${sourceUrls[0]}" target="_blank">${sourceUrls[0]}</a></div>`;
@@ -1639,7 +1681,7 @@ function escH(str) {
         .replace(/'/g,'&#39;');
 }
 
-//  INIT 
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 renderFolderSelect();
 renderLibrary();
 updateZoomDisplay();
